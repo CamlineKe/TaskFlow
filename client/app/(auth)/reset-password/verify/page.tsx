@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react'; // Add this import
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,7 +51,8 @@ const fadeIn = {
   visible: { opacity: 1, transition: { duration: 0.8, delay: 0.2 } },
 };
 
-export default function VerifyResetCodePage() {
+// Inner component that uses useSearchParams
+function VerifyResetCodeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const theme = useTheme();
@@ -373,5 +375,28 @@ export default function VerifyResetCodePage() {
         </Paper>
       </motion.div>
     </Box>
+  );
+}
+
+// Main page component with Suspense wrapper
+export default function VerifyResetCodePage() {
+  return (
+    <Suspense fallback={
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: { xs: 2, md: 3 },
+          color: 'white'
+        }}
+      >
+        <Typography>Loading verification...</Typography>
+      </Box>
+    }>
+      <VerifyResetCodeContent />
+    </Suspense>
   );
 }

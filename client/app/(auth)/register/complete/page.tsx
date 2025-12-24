@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react'; // Add this import
 import {
   Box,
   Button,
@@ -48,7 +49,8 @@ const bounceIn = {
   },
 };
 
-export default function CompleteRegistrationPage() {
+// Inner component that uses useSearchParams
+function CompleteRegistrationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const theme = useTheme();
@@ -308,5 +310,28 @@ export default function CompleteRegistrationPage() {
         </Paper>
       </motion.div>
     </Box>
+  );
+}
+
+// Main page component with Suspense wrapper
+export default function CompleteRegistrationPage() {
+  return (
+    <Suspense fallback={
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: { xs: 2, md: 3 },
+          color: 'white'
+        }}
+      >
+        <Typography>Loading registration details...</Typography>
+      </Box>
+    }>
+      <CompleteRegistrationContent />
+    </Suspense>
   );
 }
