@@ -8,8 +8,21 @@ const app: Application = express();
 
 // --- Global Middleware ---
 
-// Enable CORS (Cross-Origin Resource Sharing)
-app.use(cors());
+// Configure CORS properly with specific origins
+app.use(cors({
+  origin: [
+    'https://taskflow-woad-phi.vercel.app', // Your production frontend
+    'http://localhost:3000', // Local development
+    'http://localhost:3001'  // Alternative local port
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
+}));
+
+// Explicitly handle preflight requests
+app.options('*', cors());
 
 // Set various security-related HTTP headers
 app.use(helmet());
