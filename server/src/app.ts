@@ -8,15 +8,41 @@ const app: Application = express();
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`🌐 CORS: ${req.method} ${req.path} from ${req.headers.origin}`);
   
-  // Set CORS headers for ALL responses
-  res.header('Access-Control-Allow-Origin', 'https://taskflow-woad-phi.vercel.app');
+  // Determine allowed origin based on environment
+  let allowedOrigin = 'https://taskflow-woad-phi.vercel.app';
+  
+  // In development, allow localhost origins
+  if (process.env.NODE_ENV !== 'production') {
+    allowedOrigin = req.headers.origin || 'http://localhost:3000';
+  }
+  
+  // For production, check if the origin is allowed
+  const origin = req.headers.origin;
+  if (process.env.NODE_ENV === 'production') {
+    const allowedOrigins = [
+      'https://taskflow-woad-phi.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002'
+    ];
+    
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+    } else {
+      res.header('Access-Control-Allow-Origin', allowedOrigin);
+    }
+  } else {
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
+  }
+  
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   
   // Handle preflight requests immediately
   if (req.method === 'OPTIONS') {
     console.log('🌐 CORS: Handling OPTIONS preflight');
+    res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
     return res.status(200).end();
   }
   
@@ -50,17 +76,7 @@ app.get('/', (_req: Request, res: Response) => {
   });
 });
 
-// ========== 4. FALLBACK FOR LOCAL DEVELOPMENT ==========
-// Only add localhost in development
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    const origin = req.headers.origin;
-    if (origin && origin.includes('localhost')) {
-      res.header('Access-Control-Allow-Origin', origin);
-    }
-    next();
-  });
-}
+
 
 // ========== 5. YOUR API ROUTES ==========
 app.use('/api', apiRoutes);
