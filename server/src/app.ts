@@ -8,21 +8,33 @@ const app: Application = express();
 
 // --- Global Middleware ---
 
-// Configure CORS properly with specific origins
-app.use(cors({
-  origin: [
-    'https://taskflow-woad-phi.vercel.app', // Your production frontend
-    'http://localhost:3000', // Local development
-    'http://localhost:3001'  // Alternative local port
-  ],
+// CORS that works for BOTH production and local development
+const corsOptions = {
+  origin: (origin: string | undefined, callback: Function) => {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://taskflow-woad-phi.vercel.app', // Production frontend
+      'http://localhost:3000', // Local frontend
+      'http://localhost:3001'  // Alternative local
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range']
-}));
+  optionsSuccessStatus: 200
+};
 
-// Explicitly handle preflight requests
-app.options('*', cors());
+app.use(cors(corsOptions));
+
+// Handle OPTIONS preflight explicitly
+app.options('*', cors(corsOptions));
 
 // Set various security-related HTTP headers
 app.use(helmet());
