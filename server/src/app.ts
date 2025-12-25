@@ -4,17 +4,17 @@ import apiRoutes from './api';
 
 const app: Application = express();
 
-// ========== 1. MANUAL CORS MIDDLEWARE (FIRST!) ==========
+// ========== 1. CORS MIDDLEWARE (MUST BE FIRST) ==========
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`🌐 CORS: ${req.method} ${req.path} from ${req.headers.origin}`);
   
-  // Use res.header() instead of res.setHeader() for consistency
+  // Set CORS headers for ALL responses
   res.header('Access-Control-Allow-Origin', 'https://taskflow-woad-phi.vercel.app');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   
-  // Handle preflight
+  // Handle preflight requests immediately
   if (req.method === 'OPTIONS') {
     console.log('🌐 CORS: Handling OPTIONS preflight');
     return res.status(200).end();
@@ -27,7 +27,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Configure helmet to not interfere with CORS
 app.use(helmet({
   crossOriginResourcePolicy: false,
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
 }));
 
 app.use(express.json());
@@ -42,24 +50,7 @@ app.get('/', (_req: Request, res: Response) => {
   });
 });
 
-// ========== 4. DEBUG ENDPOINT ==========
-app.get('/api/cors-test', (req: Request, res: Response) => {
-  console.log('🔍 CORS test endpoint called');
-  res.json({
-    success: true,
-    message: 'CORS is working!',
-    origin: req.headers.origin,
-    method: req.method,
-    corsHeaders: {
-      'allow-origin': res.getHeader('Access-Control-Allow-Origin'),
-      'allow-methods': res.getHeader('Access-Control-Allow-Methods'),
-      'allow-headers': res.getHeader('Access-Control-Allow-Headers')
-    },
-    timestamp: new Date().toISOString()
-  });
-});
-
-// ========== 5. FALLBACK FOR LOCAL DEVELOPMENT ==========
+// ========== 4. FALLBACK FOR LOCAL DEVELOPMENT ==========
 // Only add localhost in development
 if (process.env.NODE_ENV !== 'production') {
   app.use((req: Request, res: Response, next: NextFunction) => {
@@ -71,7 +62,7 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// ========== 6. YOUR API ROUTES ==========
+// ========== 5. YOUR API ROUTES ==========
 app.use('/api', apiRoutes);
 
 export default app;
