@@ -1,57 +1,58 @@
-import express, { Application, Request, Response } from 'express';
-import cors from 'cors';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import apiRoutes from './api';
 
-// Create the Express application instance
 const app: Application = express();
 
-// --- Global Middleware ---
+// ========== 1. MANUAL CORS MIDDLEWARE (FIRST!) ==========
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`CORS: ${req.method} ${req.path} from ${req.headers.origin}`);
+  
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', 'https://taskflow-woad-phi.vercel.app');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    console.log('CORS: Handling OPTIONS preflight');
+    return res.status(200).end();
+  }
+  
+  next();
+});
 
-// CORS that works for BOTH production and local development
-const corsOptions = {
-  origin: (origin: string | undefined, callback: Function) => {
-    // Allow requests with no origin (like mobile apps, curl, postman)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'https://taskflow-woad-phi.vercel.app', // Production frontend
-      'http://localhost:3000', // Local frontend
-      'http://localhost:3001'  // Alternative local
-    ];
-    
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      console.log('Blocked by CORS:', origin);
-      return callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-
-// Handle OPTIONS preflight explicitly
-app.options('*', cors(corsOptions));
-
-// Set various security-related HTTP headers
+// ========== 2. OTHER MIDDLEWARE ==========
 app.use(helmet());
-
-// Enable the Express body parser for JSON
 app.use(express.json());
 
-// A simple route to verify that the server is running
+// ========== 3. HEALTH CHECK ==========
 app.get('/', (_req: Request, res: Response) => {
-  res.status(200).json({
+  res.json({
     status: 'ok',
-    message: 'Server is healthy and running!',
+    message: 'Backend running with CORS',
+    corsHeaders: {
+      'allow-origin': 'https://taskflow-woad-phi.vercel.app'
+    }
   });
 });
 
-// --- API Routes ---
-app.use('/api', apiRoutes); // THE MASTER ROUTER
+// ========== 4. DEBUG ENDPOINT ==========
+app.get('/api/debug-cors', (req: Request, res: Response) => {
+  console.log('Debug CORS endpoint called');
+  res.json({
+    success: true,
+    origin: req.headers.origin,
+    method: req.method,
+    headers: {
+      'access-control-allow-origin': res.getHeader('Access-Control-Allow-Origin'),
+      'access-control-allow-methods': res.getHeader('Access-Control-Allow-Methods')
+    }
+  });
+});
 
-// Export the configured app instance
+// ========== 5. YOUR API ROUTES ==========
+app.use('/api', apiRoutes);
+
 export default app;
