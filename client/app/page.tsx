@@ -58,7 +58,12 @@ export default function LandingPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { mode, toggleColorMode } = useThemeContext();
+  const { mode, toggleColorMode, mounted } = useThemeContext();
+
+  // Don't render until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   const features = [
     {

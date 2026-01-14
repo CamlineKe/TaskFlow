@@ -16,6 +16,7 @@ export default function ThemeProvider({
 }) {
   // State to hold the current mode
   const [mode, setMode] = useState<'light' | 'dark'>('dark');
+  const [mounted, setMounted] = useState(false);
 
   // Check for saved preference in localStorage on initial load
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function ThemeProvider({
     if (savedMode) {
       setMode(savedMode);
     }
+    setMounted(true);
   }, []);
 
   // The function to toggle the mode
@@ -43,9 +45,15 @@ export default function ThemeProvider({
     () => ({
       mode,
       toggleColorMode,
+      mounted,
     }),
-    [mode]
+    [mode, mounted]
   );
+
+  // Don't render until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <ThemeContext.Provider value={themeContextValue}>
