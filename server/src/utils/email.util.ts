@@ -35,9 +35,29 @@ const resend = new Resend(resendApiKey || ''); // empty string is fine; calls wi
  */
 export const sendEmail = async (options: SendEmailOptions): Promise<EmailResult> => {
   try {
-    const from =
-      process.env.EMAIL_FROM ||
-      `"TaskFlow" <${config.email.user}>`; // fallback for backwards compatibility
+    if (!process.env.RESEND_API_KEY) {
+      return {
+        success: false,
+        error: 'RESEND_API_KEY is not set. Configure it in Render environment variables.',
+      };
+    }
+
+    const from = process.env.EMAIL_FROM;
+
+    if (!from) {
+      return {
+        success: false,
+        error:
+          'EMAIL_FROM is not set. Set it to a verified domain (e.g., "TaskFlow" <noreply@yourdomain.com>). See Resend dashboard to verify a domain.',
+      };
+    }
+
+    // Check if using resend.dev domain (testing only)
+    if (from.includes('@resend.dev')) {
+      console.warn(
+        '⚠️ Using @resend.dev domain. This can only send to your own email. Verify a domain in Resend to send to all recipients.'
+      );
+    }
 
     const { data, error } = await resend.emails.send(
       {
@@ -50,8 +70,23 @@ export const sendEmail = async (options: SendEmailOptions): Promise<EmailResult>
     );
 
     if (error) {
+      const errorMessage = (error as any)?.message || 'Unknown error';
       console.error('Email sending failed:', error);
-      return { success: false, error: (error as any).message || 'Unknown error' };
+
+      // Provide helpful guidance for common Resend errors
+      if (
+        errorMessage.includes('resend.dev') ||
+        errorMessage.includes('testing domain') ||
+        errorMessage.includes('can only send to your own email')
+      ) {
+        return {
+          success: false,
+          error:
+            'The resend.dev domain can only send to your own email. To send to all recipients, verify a domain in Resend: 1) Go to Resend Dashboard → Domains → Add Domain, 2) Add the DNS records provided, 3) Wait for verification, 4) Update EMAIL_FROM to use your domain (e.g., "TaskFlow" <noreply@yourdomain.com>)',
+        };
+      }
+
+      return { success: false, error: errorMessage };
     }
 
     return { success: true, id: data?.id || null };
