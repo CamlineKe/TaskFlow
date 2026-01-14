@@ -1,6 +1,6 @@
 'use client'; // This component must be a client component
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
@@ -29,20 +29,6 @@ function MuiBridge({ children }: { children: React.ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create a new QueryClient instance for each request
   const [queryClient] = useState(() => new QueryClient());
-  const [mounted, setMounted] = useState(false);
-
-  // Prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div style={{ visibility: 'hidden' }}>
-        {children}
-      </div>
-    );
-  }
 
   return (
     <NextThemesProvider
@@ -55,7 +41,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <CssBaseline />
         <QueryClientProvider client={queryClient}>
           {children}
-          <ReactQueryDevtools initialIsOpen={false} />
+          {process.env.NODE_ENV === 'development' && (
+            <ReactQueryDevtools initialIsOpen={false} />
+          )}
         </QueryClientProvider>
       </MuiBridge>
     </NextThemesProvider>
