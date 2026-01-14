@@ -9,7 +9,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`🌐 CORS: ${req.method} ${req.path} from ${req.headers.origin}`);
   
   // Determine allowed origin based on environment
-  let allowedOrigin = 'https://taskflow-woad-phi.vercel.app';
+  // IMPORTANT: keep this list in sync with deployed frontends
+  const frontendOrigins = [
+    'https://taskflow-zeta-dusky.vercel.app', // current client deployment
+    'https://taskflow-woad-phi.vercel.app',   // previous client deployment (kept for safety)
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+  ];
+  let allowedOrigin = frontendOrigins[0]; // default to current primary frontend
   
   // In development, allow localhost origins
   if (process.env.NODE_ENV !== 'production') {
@@ -19,14 +27,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // For production, check if the origin is allowed
   const origin = req.headers.origin;
   if (process.env.NODE_ENV === 'production') {
-    const allowedOrigins = [
-      'https://taskflow-woad-phi.vercel.app',
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3002'
-    ];
-    
-    if (origin && allowedOrigins.includes(origin)) {
+    if (origin && frontendOrigins.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
     } else {
       res.header('Access-Control-Allow-Origin', allowedOrigin);
