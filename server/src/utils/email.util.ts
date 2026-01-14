@@ -14,6 +14,7 @@ interface EmailResult {
   success: boolean;
   id?: string | null;
   error?: string;
+  previewUrl?: string;
 }
 
 // Initialize Resend client
@@ -38,13 +39,15 @@ export const sendEmail = async (options: SendEmailOptions): Promise<EmailResult>
       process.env.EMAIL_FROM ||
       `"TaskFlow" <${config.email.user}>`; // fallback for backwards compatibility
 
-    const { data, error } = await resend.emails.send({
-      from,
-      to: options.to,
-      subject: options.subject,
-      text: options.text,
-      html: options.html,
-    });
+    const { data, error } = await resend.emails.send(
+      {
+        from,
+        to: options.to,
+        subject: options.subject,
+        text: options.text,
+        html: options.html,
+      } as any
+    );
 
     if (error) {
       console.error('Email sending failed:', error);
