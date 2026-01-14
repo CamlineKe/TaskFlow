@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import config from '../config/config';
 
 // Define email sending options interface
@@ -12,70 +12,20 @@ interface SendEmailOptions {
 // Define custom interface for email sending result
 interface EmailResult {
   success: boolean;
-  info?: any; // Using any for simplicity, but can be more specific
+  id?: string | null;
   error?: string;
-  previewUrl?: string;
 }
 
-/**
- * Configure nodemailer transporter
- * In production, you would use a real SMTP service
- * For development, we can use a test account or configure a real service
- */
-const createTransporter = async () => {
-  // Check if real SMTP credentials are configured
-  if (config.email.host && config.email.user && config.email.pass && 
-      config.email.host !== 'smtp.example.com' && config.email.user !== 'user@example.com') {
-    // Try to use real SMTP credentials (Gmail or other service)
-    console.log('Attempting to use configured SMTP service:', config.email.host);
-    
-    try {
-      const transporter = nodemailer.createTransport({
-        host: config.email.host,
-        port: config.email.port,
-        secure: config.email.secure,
-        auth: {
-          user: config.email.user,
-          pass: config.email.pass,
-        },
-      });
-      
-      // Test the connection
-      await transporter.verify();
-      console.log('✅ SMTP connection verified successfully');
-      return transporter;
-    } catch (error: any) {
-      console.error('❌ SMTP connection failed:', error.message);
-      console.log('📧 Falling back to Ethereal test service');
-      
-      // Fall back to Ethereal if Gmail fails
-      const testAccount = await nodemailer.createTestAccount();
-      return nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-    }
-  } else {
-    // Fall back to Ethereal test service for development
-    console.log('📧 Using Ethereal test service (emails won\'t be delivered)');
-    const testAccount = await nodemailer.createTestAccount();
-    
-    return nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-  }
-};
+// Initialize Resend client
+const resendApiKey = process.env.RESEND_API_KEY;
+
+if (!resendApiKey) {
+  console.warn(
+    'RESEND_API_KEY is not set. Emails will fail until you configure it.'
+  );
+}
+
+const resend = new Resend(resendApiKey || ''); // empty string is fine; calls will fail with a clear error
 
 /**
  * Send an email
@@ -84,29 +34,24 @@ const createTransporter = async () => {
  */
 export const sendEmail = async (options: SendEmailOptions): Promise<EmailResult> => {
   try {
-    const transporter = await createTransporter();
-    
-    const info = await transporter.sendMail({
-      from: `"TaskFlow" <${config.email.user}>`,
+    const from =
+      process.env.EMAIL_FROM ||
+      `"TaskFlow" <${config.email.user}>`; // fallback for backwards compatibility
+
+    const { data, error } = await resend.emails.send({
+      from,
       to: options.to,
       subject: options.subject,
       text: options.text,
       html: options.html,
     });
-    
-    // Create result object
-    const result: EmailResult = { success: true, info };
-    
-    // For development, add the preview URL
-    if (process.env.NODE_ENV !== 'production') {
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      console.log('Email preview URL: %s', previewUrl);
-      if (previewUrl) {
-        result.previewUrl = previewUrl;
-      }
+
+    if (error) {
+      console.error('Email sending failed:', error);
+      return { success: false, error: (error as any).message || 'Unknown error' };
     }
-    
-    return result;
+
+    return { success: true, id: data?.id || null };
   } catch (error: any) {
     console.error('Email sending failed:', error);
     return { success: false, error: error.message };
