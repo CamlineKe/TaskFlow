@@ -8,33 +8,11 @@ const app: Application = express();
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`🌐 CORS: ${req.method} ${req.path} from ${req.headers.origin}`);
   
-  // Determine allowed origin based on environment
-  // IMPORTANT: keep this list in sync with deployed frontends
-  const frontendOrigins = [
-    'https://taskflow-zeta-dusky.vercel.app', // current client deployment
-    'https://taskflow-woad-phi.vercel.app',   // previous client deployment (kept for safety)
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-  ];
-  let allowedOrigin = frontendOrigins[0]; // default to current primary frontend
-  
-  // In development, allow localhost origins
-  if (process.env.NODE_ENV !== 'production') {
-    allowedOrigin = req.headers.origin || 'http://localhost:3000';
-  }
-  
-  // For production, check if the origin is allowed
+  // Allow all origins by echoing back the requester origin.
+  // If Origin is missing, fall back to '*'. This avoids CORS failures
+  // when new frontend URLs are introduced.
   const origin = req.headers.origin;
-  if (process.env.NODE_ENV === 'production') {
-    if (origin && frontendOrigins.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
-    } else {
-      res.header('Access-Control-Allow-Origin', allowedOrigin);
-    }
-  } else {
-    res.header('Access-Control-Allow-Origin', allowedOrigin);
-  }
+  res.header('Access-Control-Allow-Origin', origin || '*');
   
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
