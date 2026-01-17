@@ -13,7 +13,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     'http://localhost:3000',  // Local development
     'http://localhost:3001',  // Alternative local port
     'https://taskflow-zeta-dusky.vercel.app',  // YOUR FRONTEND
-    'https://task-flow-omega-ten.vercel.app',  // YOUR BACKEND (if needed)
+    'https://task-flow-eight-xi.vercel.app',  // YOUR BACKEND (if needed)
   ];
   
   const origin = req.headers.origin;
@@ -58,7 +58,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://taskflow-zeta-dusky.vercel.app", "https://task-flow-omega-ten.vercel.app", "http://localhost:3000"],
+      connectSrc: ["'self'", "https://taskflow-zeta-dusky.vercel.app", "https://task-flow-eight-xi.vercel.app", "http://localhost:3000"],
     },
   },
 }));
@@ -75,7 +75,7 @@ app.get('/', (_req: Request, res: Response) => {
       'http://localhost:3000',
       'https://taskflow-zeta-dusky.vercel.app'
     ],
-    backend: 'https://task-flow-omega-ten.vercel.app',
+    backend: 'https://task-flow-eight-xi.vercel.app',
     timestamp: new Date().toISOString()
   });
 });
