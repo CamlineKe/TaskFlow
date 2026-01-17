@@ -8,12 +8,12 @@ const app: Application = express();
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`🌐 CORS: ${req.method} ${req.path} from ${req.headers.origin}`);
   
-  // List of allowed origins (add your frontend URLs here)
+  // List of allowed origins - USE YOUR ACTUAL DOMAINS
   const allowedOrigins = [
     'http://localhost:3000',  // Local development
     'http://localhost:3001',  // Alternative local port
-    'https://taskflow-woad-phi.vercel.app',  // Your frontend from the health check
-    // Add other production domains here
+    'https://taskflow-zeta-dusky.vercel.app',  // YOUR FRONTEND
+    'https://task-flow-omega-ten.vercel.app',  // YOUR BACKEND (if needed)
   ];
   
   const origin = req.headers.origin;
@@ -21,12 +21,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // Check if the request origin is in the allowed list
   if (origin && allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
-  } else if (process.env.NODE_ENV === 'development') {
+    console.log(`✅ Allowed origin: ${origin}`);
+  } else if (process.env.NODE_ENV !== 'production') {
     // In development, allow any origin
     res.header('Access-Control-Allow-Origin', origin || '*');
+    console.log(`⚠️ Development mode, allowing: ${origin || '*'}`);
   } else {
-    // In production, you might want to be more strict
-    res.header('Access-Control-Allow-Origin', allowedOrigins[0]);
+    // In production, default to your frontend
+    res.header('Access-Control-Allow-Origin', 'https://taskflow-zeta-dusky.vercel.app');
+    console.log(`🔒 Production, defaulting to frontend`);
   }
   
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -55,7 +58,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://taskflow-woad-phi.vercel.app", "http://localhost:3000"], // Add your domains
+      connectSrc: ["'self'", "https://taskflow-zeta-dusky.vercel.app", "https://task-flow-omega-ten.vercel.app", "http://localhost:3000"],
     },
   },
 }));
@@ -70,8 +73,9 @@ app.get('/', (_req: Request, res: Response) => {
     cors: 'enabled',
     allowedOrigins: [
       'http://localhost:3000',
-      'https://taskflow-woad-phi.vercel.app'
+      'https://taskflow-zeta-dusky.vercel.app'
     ],
+    backend: 'https://task-flow-omega-ten.vercel.app',
     timestamp: new Date().toISOString()
   });
 });
