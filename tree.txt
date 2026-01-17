@@ -1,0 +1,129 @@
+ .
+├─ DEPLOYMENT.md
+├─ README.md
+├─ client
+│  ├─ .env.local
+│  ├─ .gitignore
+│  ├─ next-env.d.ts
+│  ├─ next.config.mjs
+│  ├─ package.json
+│  ├─ tsconfig.json
+│  ├─ .next
+│  ├─ server
+│  ├─ static
+│  ├─ types
+│  │  ├─ package.json
+│  │  └─ app
+│  ├─ app
+│  │  ├─ layout.tsx
+│  │  ├─ page.tsx
+│  │  ├─ (auth)
+│  │  │  ├─ layout.tsx
+│  │  │  ├─ forgot-password
+│  │  │  │  └─ page.tsx
+│  │  │  ├─ login
+│  │  │  │  └─ page.tsx
+│  │  │  ├─ register
+│  │  │  │  ├─ page.tsx
+│  │  │  │  ├─ complete
+│  │  │  │  │  └─ page.tsx
+│  │  │  │  └─ verify
+│  │  │  │     └─ page.tsx
+│  │  │  └─ reset-password
+│  │  │     ├─ reset
+│  │  │     │  └─ page.tsx
+│  │  │     └─ verify
+│  │  │        └─ page.tsx
+│  │  └─ app
+│  │     ├─ layout.tsx
+│  │     ├─ page.tsx
+│  │     ├─ projects
+│  │     │  ├─ page.tsx
+│  │     │  └─ [projectId]
+│  │     │     └─ page.tsx
+│  │     ├─ settings
+│  │     │  └─ page.tsx
+│  │     └─ tasks
+│  │        └─ page.tsx
+│  ├─ components
+│  │  ├─ board
+│  │  │  ├─ Column.tsx
+│  │  │  ├─ CreateTaskModal.tsx
+│  │  │  ├─ TaskCard.tsx
+│  │  │  └─ TaskDetailModal.tsx
+│  │  ├─ layout
+│  │  │  └─ SessionLoader.tsx
+│  │  ├─ projects
+│  │  │  ├─ CreateProjectModal.tsx
+│  │  │  ├─ CreateTaskModalForProject.tsx
+│  │  │  ├─ EditProjectModal.tsx
+│  │  │  ├─ ProjectCard.tsx
+│  │  │  └─ ProjectCardSkeleton.tsx
+│  │  ├─ providers
+│  │  │  └─ ThemeProvider.tsx
+│  │  ├─ tasks
+│  │  │  ├─ CreateTaskModal.tsx
+│  │  │  └─ TaskCompletionConfirmModal.tsx
+│  │  └─ ui
+│  │     ├─ ConfirmationModal.tsx
+│  │     └─ Modal.tsx
+│  ├─ context
+│  │  └─ ThemeContext.tsx
+│  ├─ lib
+│  │  ├─ axios.ts
+│  │  ├─ providers.tsx
+│  │  └─ theme.ts
+│  └─ store
+│     └─ auth.store.ts
+└─ server
+   ├─ .env
+   ├─ .env.example
+   ├─ .gitignore
+   ├─ package.json
+   ├─ tsconfig.json
+   ├─ vercel.json
+   ├─ api
+   │  └─ index.ts
+   └─ src
+      ├─ app.ts
+      ├─ server.ts
+      ├─ api
+      │  ├─ index.ts
+      │  ├─ auth
+      │  │  ├─ auth.controller.ts
+      │  │  ├─ auth.routes.ts
+      │  │  └─ auth.validation.ts
+      │  ├─ columns
+      │  │  ├─ column.controller.ts
+      │  │  ├─ column.routes.ts
+      │  │  └─ column.validation.ts
+      │  ├─ projects
+      │  │  ├─ project.controller.ts
+      │  │  ├─ project.routes.ts
+      │  │  └─ project.validation.ts
+      │  ├─ tasks
+      │  │  ├─ task.controller.ts
+      │  │  ├─ task.routes.ts
+      │  │  └─ task.validation.ts
+      │  └─ users
+      │     ├─ user.controller.ts
+      │     ├─ user.routes.ts
+      │     └─ user.validation.ts
+      ├─ config
+      │  ├─ config.ts
+      │  └─ database.ts
+      ├─ middleware
+      │  ├─ auth.middleware.ts
+      │  └─ validation.middleware.ts
+      ├─ models
+      │  ├─ board.model.ts
+      │  ├─ column.model.ts
+      │  ├─ emailVerification.model.ts
+      │  ├─ project.model.ts
+      │  ├─ resetToken.model.ts
+      │  ├─ task.model.ts
+      │  └─ User.model.ts
+      ├─ types
+      │  └─ nodemailer.d.ts
+      └─ utils
+         └─ email.util.ts
