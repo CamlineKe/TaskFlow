@@ -9,11 +9,6 @@
 │  ├─ package.json
 │  ├─ tsconfig.json
 │  ├─ .next
-│  ├─ server
-│  ├─ static
-│  ├─ types
-│  │  ├─ package.json
-│  │  └─ app
 │  ├─ app
 │  │  ├─ layout.tsx
 │  │  ├─ page.tsx

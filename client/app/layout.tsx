@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { Providers } from '@/lib/providers'; // Using our path alias
+import { Providers } from '@/lib/providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
