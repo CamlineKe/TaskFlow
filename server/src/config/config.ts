@@ -9,7 +9,8 @@ const config = {
     nodeEnv: process.env.NODE_ENV || 'development',
   },
   database: {
-    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/taskflow',
+    // Changed from MONGODB_URI to DB_URI to match your .env file
+    uri: process.env.DB_URI || 'mongodb://localhost:27017/taskflow',
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'taskflow-secret-key',

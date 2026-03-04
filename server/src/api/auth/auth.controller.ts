@@ -17,11 +17,14 @@ const generateToken = (userId: string) => {
   }
   const secret = process.env.JWT_SECRET;
 
-  const expiresInSeconds = 604800; 
-
   const payload = { id: userId };
   
-  return jwt.sign(payload, secret, { expiresIn: expiresInSeconds });
+  // Use type assertion to tell TypeScript this is a valid SignOptions object
+  const signOptions: jwt.SignOptions = {
+    expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn']
+  };
+  
+  return jwt.sign(payload, secret, signOptions);
 };
 
 // --- Controller for User Registration ---
@@ -77,23 +80,17 @@ export const loginController = async (
   }
 };
 
-// --- NEW FUNCTION ---
 // --- Controller to get the currently authenticated user ---
 export const getMeController = async (req: Request, res: Response) => {
   try {
-    // The user ID is attached to the request object by our authMiddleware
-    // We can safely cast it to a string.
     const userId = (req as any).user.id as string;
 
-    // Find the user by their ID and exclude the password from the result
     const user = await User.findById(userId).select('-password');
 
     if (!user) {
-      // This case should be rare if the token is valid, but it's good practice
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Send back the user object
     res.status(200).json(user);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error.', error: error.message });
@@ -108,20 +105,16 @@ export const requestResetController = async (
   try {
     const { email } = req.body;
 
-    // Find the user with the provided email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'No account found with that email address.' });
     }
 
-    // Delete any existing reset tokens for this user
     await ResetToken.deleteMany({ userId: user._id });
 
-    // Create a new reset token
     const resetTokenData = createResetToken(user._id as unknown as Schema.Types.ObjectId);
     const resetToken = await ResetToken.create(resetTokenData);
 
-    // Send the reset code to the user's email
     const emailResult = await sendPasswordResetEmail(user.email, resetToken.code);
 
     if (!emailResult.success) {
@@ -131,16 +124,14 @@ export const requestResetController = async (
       });
     }
 
-    // In development, return the preview URL for testing
     let devPreviewUrl;
     if (config.server.nodeEnv !== 'production') {
       devPreviewUrl = emailResult.previewUrl;
     }
 
-    // Return success response
     res.status(200).json({ 
       message: 'Password reset instructions sent to your email.',
-      token: resetToken.token, // Include this in development for testing
+      token: resetToken.token,
       ...(devPreviewUrl ? { previewUrl: devPreviewUrl } : {})
     });
   } catch (error: any) {
@@ -159,18 +150,16 @@ export const verifyResetCodeController = async (
   try {
     const { email, code } = req.body;
 
-    // Find the user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Find a valid reset token for this user with matching code
     const resetToken = await ResetToken.findOne({
       userId: user._id,
       code,
       isValid: true,
-      expiresAt: { $gt: new Date() } // Check that token hasn't expired
+      expiresAt: { $gt: new Date() }
     });
 
     if (!resetToken) {
@@ -179,7 +168,6 @@ export const verifyResetCodeController = async (
       });
     }
 
-    // Return token for the next step
     res.status(200).json({
       message: 'Code verified successfully.',
       token: resetToken.token
@@ -200,12 +188,11 @@ export const resetPasswordController = async (
   try {
     const { token, code, newPassword } = req.body;
 
-    // Find the reset token
     const resetToken = await ResetToken.findOne({
       token,
       code,
       isValid: true,
-      expiresAt: { $gt: new Date() } // Check that token hasn't expired
+      expiresAt: { $gt: new Date() }
     });
 
     if (!resetToken) {
@@ -214,17 +201,14 @@ export const resetPasswordController = async (
       });
     }
 
-    // Find the user
     const user = await User.findById(resetToken.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    // Update the user's password
     user.password = newPassword;
     await user.save();
 
-    // Invalidate the reset token
     resetToken.isValid = false;
     await resetToken.save();
 
@@ -247,24 +231,19 @@ export const initiateRegistrationController = async (
   try {
     const { name, email, password } = req.body;
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: 'User with this email already exists.' });
     }
 
-    // Check if there's already a pending verification for this email
     await EmailVerification.deleteMany({ email });
 
-    // Hash the password
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create email verification record
     const verificationData = createEmailVerification(email, name, hashedPassword);
     const emailVerification = await EmailVerification.create(verificationData);
 
-    // Send verification email
     const emailResult = await sendEmailVerificationCode(email, name, emailVerification.verificationCode);
 
     if (!emailResult.success) {
@@ -274,16 +253,14 @@ export const initiateRegistrationController = async (
       });
     }
 
-    // In development, return the preview URL for testing
     let devPreviewUrl;
     if (config.server.nodeEnv !== 'production') {
       devPreviewUrl = emailResult.previewUrl;
     }
 
-    // Return success response
     res.status(200).json({ 
       message: 'Verification code sent to your email. Please check your inbox.',
-      token: emailVerification.token, // Include this for the next step
+      token: emailVerification.token,
       ...(devPreviewUrl ? { previewUrl: devPreviewUrl } : {})
     });
   } catch (error: any) {
@@ -302,12 +279,11 @@ export const verifyRegistrationEmailController = async (
   try {
     const { email, code } = req.body;
 
-    // Find the email verification record
     const emailVerification = await EmailVerification.findOne({
       email,
       verificationCode: code,
       isVerified: false,
-      expiresAt: { $gt: new Date() } // Check that verification hasn't expired
+      expiresAt: { $gt: new Date() }
     });
 
     if (!emailVerification) {
@@ -316,11 +292,9 @@ export const verifyRegistrationEmailController = async (
       });
     }
 
-    // Mark as verified
     emailVerification.isVerified = true;
     await emailVerification.save();
 
-    // Return token for the next step
     res.status(200).json({
       message: 'Email verified successfully.',
       token: emailVerification.token
@@ -341,17 +315,14 @@ export const completeRegistrationController = async (
   try {
     const { token, code } = req.body;
 
-    // Find the verified email verification record
     const emailVerification = await EmailVerification.findOne({
       token,
       verificationCode: code,
       isVerified: true,
-      expiresAt: { $gt: new Date() } // Check that verification hasn't expired
+      expiresAt: { $gt: new Date() }
     });
 
     if (!emailVerification) {
-      // If verification record doesn't exist, registration might already be complete
-      // Return success to handle duplicate calls gracefully
       return res.status(201).json({ 
         message: 'Registration completed successfully! Please log in with your credentials.',
         success: true
@@ -359,27 +330,21 @@ export const completeRegistrationController = async (
     }
 
     try {
-      // Create the user account
       await User.create({
         name: emailVerification.name,
         email: emailVerification.email,
-        password: emailVerification.password // Already hashed
+        password: emailVerification.password
       });
     } catch (userCreationError: any) {
-      // If it's a duplicate key error, user already exists - that's fine
       if (userCreationError.code === 11000) {
         // User already exists, continue with success
       } else {
-        // If it's a different error, re-throw it
         throw userCreationError;
       }
     }
 
-    // Delete the email verification record
     await EmailVerification.findByIdAndDelete(emailVerification._id);
 
-    // Following the Authentication Flow Navigation Preference:
-    // Don't auto-login, redirect to login page with success message
     res.status(201).json({ 
       message: 'Registration completed successfully! Please log in with your credentials.',
       success: true
