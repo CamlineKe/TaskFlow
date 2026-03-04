@@ -83,8 +83,12 @@ export default function RegisterPage() {
         console.log('Email preview URL (development only):', previewUrl);
       }
 
-      // Redirect to verification page with token and email
-      router.push(`/register/verify?token=${token}&email=${encodeURIComponent(data.email)}`);
+      // Store token and email in sessionStorage instead of URL parameters
+      sessionStorage.setItem('registrationToken', token);
+      sessionStorage.setItem('registrationEmail', data.email);
+
+      // Redirect to verification page without sensitive data in URL
+      router.push('/register/verify');
 
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'An unexpected error occurred.';

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react'; // Add this import
+import { Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,16 +15,13 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
-  Container,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   Email as EmailIcon,
-  VerifiedUser as VerifiedUserIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -51,31 +48,31 @@ const fadeIn = {
   visible: { opacity: 1, transition: { duration: 0.8, delay: 0.2 } },
 };
 
-// Inner component that uses useSearchParams
+// Inner component
 function VerifyEmailContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   const [serverError, setServerError] = useState<string | null>(null);
   const [email, setEmail] = useState<string>('');
   const [token, setToken] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Extract email and token from URL parameters
+  // Get email and token from sessionStorage
   useEffect(() => {
-    const emailParam = searchParams.get('email');
-    const tokenParam = searchParams.get('token');
+    const storedToken = sessionStorage.getItem('registrationToken');
+    const storedEmail = sessionStorage.getItem('registrationEmail');
     
-    if (!emailParam || !tokenParam) {
-      toast.error('Invalid verification link. Please start registration again.');
+    if (!storedToken || !storedEmail) {
+      toast.error('Registration session expired. Please start again.');
       router.push('/register');
       return;
     }
     
-    setEmail(emailParam);
-    setToken(tokenParam);
-  }, [searchParams, router]);
+    setToken(storedToken);
+    setEmail(storedEmail);
+    setIsLoading(false);
+  }, [router]);
 
   const {
     register,
@@ -99,11 +96,18 @@ function VerifyEmailContent() {
 
       const { token: verificationToken } = response.data;
       
+      // Store the verification token and code for the next step
+      sessionStorage.setItem('verificationToken', verificationToken);
+      sessionStorage.setItem('verificationCode', data.code);
+      
+      // Clear the initial registration data
+      sessionStorage.removeItem('registrationToken');
+      
       // Show success toast
       toast.success('Email verified successfully!');
 
-      // Redirect to complete registration step with both tokens and code
-      router.push(`/register/complete?token=${verificationToken}&code=${data.code}`);
+      // Redirect to complete registration step without URL parameters
+      router.push('/register/complete');
 
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'An unexpected error occurred.';
@@ -114,8 +118,7 @@ function VerifyEmailContent() {
 
   const handleResendCode = async () => {
     try {
-      // We would need the original registration data to resend
-      // For now, redirect back to registration
+      // In a real implementation, you would call an API to resend the code
       toast.info('Please restart the registration process.');
       router.push('/register');
     } catch (error: any) {
@@ -123,8 +126,21 @@ function VerifyEmailContent() {
     }
   };
 
-  if (!email || !token) {
-    return null; // Will redirect in useEffect
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white'
+        }}
+      >
+        <Typography>Loading verification details...</Typography>
+      </Box>
+    );
   }
 
   return (
@@ -141,7 +157,7 @@ function VerifyEmailContent() {
     >
       {/* Back Button */}
       <IconButton
-        onClick={() => router.back()}
+        onClick={() => router.push('/register')}
         sx={{
           position: 'absolute',
           top: { xs: 16, md: 24 },

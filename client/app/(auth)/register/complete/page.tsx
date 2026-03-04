@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from 'react'; // Add this import
 import {
   Box,
   Button,
@@ -18,7 +17,7 @@ import {
   Login as LoginIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -49,52 +48,53 @@ const bounceIn = {
   },
 };
 
-// Inner component that uses useSearchParams
-function CompleteRegistrationContent() {
+export default function CompleteRegistrationPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   const [serverError, setServerError] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [token, setToken] = useState<string>('');
-  const [code, setCode] = useState<string>('');
-  const [hasAttempted, setHasAttempted] = useState(false); // Prevent duplicate calls
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasAttempted, setHasAttempted] = useState(false);
 
-  // Extract token and code from URL parameters
+  // Get token and code from sessionStorage
   useEffect(() => {
-    const tokenParam = searchParams.get('token');
-    const codeParam = searchParams.get('code');
+    const verificationToken = sessionStorage.getItem('verificationToken');
+    const verificationCode = sessionStorage.getItem('verificationCode');
     
-    if (!tokenParam || !codeParam) {
-      toast.error('Invalid completion link. Please start registration again.');
+    if (!verificationToken || !verificationCode) {
+      toast.error('Registration session expired. Please start again.');
       router.push('/register');
       return;
     }
     
-    setToken(tokenParam);
-    setCode(codeParam);
+    setIsLoading(false);
     
     // Only attempt completion once
     if (!hasAttempted) {
       setHasAttempted(true);
-      completeRegistration(tokenParam, codeParam);
+      completeRegistration(verificationToken, verificationCode);
     }
-  }, [searchParams, router]); // Removed hasAttempted to prevent dependency loop
+  }, [router, hasAttempted]);
 
-  const completeRegistration = async (tokenParam: string, codeParam: string) => {
+  const completeRegistration = async (token: string, code: string) => {
     setIsCompleting(true);
     setServerError(null);
     
     try {
       const response = await apiClient.post('/auth/complete-registration', {
-        token: tokenParam,
-        code: codeParam,
+        token: token,
+        code: code,
       });
 
-      // Only show success and set completed if API call succeeds
+      // Clear session storage after successful completion
+      sessionStorage.removeItem('verificationToken');
+      sessionStorage.removeItem('verificationCode');
+      sessionStorage.removeItem('registrationEmail');
+      
+      // Show success toast
       toast.success('Registration completed successfully! You can now log in.');
       setIsCompleted(true);
 
@@ -102,7 +102,7 @@ function CompleteRegistrationContent() {
       const errorMessage = error.response?.data?.message || 'An unexpected error occurred during registration completion.';
       setServerError(errorMessage);
       toast.error(errorMessage);
-      setIsCompleted(false); // Make sure completion flag is false on error
+      setIsCompleted(false);
     } finally {
       setIsCompleting(false);
     }
@@ -113,11 +113,29 @@ function CompleteRegistrationContent() {
   };
 
   const handleStartOver = () => {
+    // Clear any remaining session data
+    sessionStorage.removeItem('verificationToken');
+    sessionStorage.removeItem('verificationCode');
+    sessionStorage.removeItem('registrationToken');
+    sessionStorage.removeItem('registrationEmail');
     router.push('/register');
   };
 
-  if (!token || !code) {
-    return null; // Will redirect in useEffect
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white'
+        }}
+      >
+        <Typography>Loading registration details...</Typography>
+      </Box>
+    );
   }
 
   return (
@@ -134,7 +152,7 @@ function CompleteRegistrationContent() {
     >
       {/* Back Button */}
       <IconButton
-        onClick={() => router.back()}
+        onClick={() => router.push('/register')}
         sx={{
           position: 'absolute',
           top: { xs: 16, md: 24 },
@@ -310,28 +328,5 @@ function CompleteRegistrationContent() {
         </Paper>
       </motion.div>
     </Box>
-  );
-}
-
-// Main page component with Suspense wrapper
-export default function CompleteRegistrationPage() {
-  return (
-    <Suspense fallback={
-      <Box
-        sx={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: { xs: 2, md: 3 },
-          color: 'white'
-        }}
-      >
-        <Typography>Loading registration details...</Typography>
-      </Box>
-    }>
-      <CompleteRegistrationContent />
-    </Suspense>
   );
 }
