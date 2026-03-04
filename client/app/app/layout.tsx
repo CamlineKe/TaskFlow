@@ -214,7 +214,8 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated } = useAuthStore.getState();
+  // FIX: Use the hook directly instead of getState() to ensure reactivity
+  const { isAuthenticated } = useAuthStore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const pathname = usePathname();

@@ -47,7 +47,7 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/axios';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
@@ -55,16 +55,14 @@ import { TaskDetailModal } from '@/components/board/TaskDetailModal';
 import { TaskCompletionConfirmModal } from '@/components/tasks/TaskCompletionConfirmModal';
 import { toast } from 'sonner';
 
-// Task interface
+// Task interface - fixed to use only _id and remove completed field
 interface Task {
-  id: string;
   _id: string;
   title: string;
   description?: string;
   status: 'todo' | 'in-progress' | 'completed';
   priority: 'low' | 'medium' | 'high';
   dueDate?: string;
-  completed?: boolean;
   project?: {
     _id: string;
     name: string;
@@ -81,6 +79,7 @@ const fetchTasks = async (): Promise<Task[]> => {
   const { data } = await apiClient.get('/tasks');
   return data;
 };
+
 // Animation variants
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -184,7 +183,6 @@ export default function TasksPage() {
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, taskId: string) => {
-    // Use client coordinates for positioning
     const rect = event.currentTarget.getBoundingClientRect();
     setMenuPosition({
       left: rect.left,
@@ -252,7 +250,7 @@ export default function TasksPage() {
     event.stopPropagation();
     const isCompleting = task.status !== 'completed';
     setTaskToComplete({
-      id: task._id || task.id,
+      id: task._id,
       title: task.title,
       isCompleting,
     });
@@ -280,7 +278,7 @@ export default function TasksPage() {
     switch (status) {
       case 'completed': return 'success';
       case 'in-progress': return 'warning';
-      case 'pending': return 'info';
+      case 'todo': return 'info';
       default: return 'default';
     }
   };
@@ -335,108 +333,114 @@ export default function TasksPage() {
     return filtered;
   };
 
-  const TaskCard = ({ task }: { task: Task }) => (
-    <motion.div variants={staggerChild}>
-      <Card 
-        onClick={() => handleTaskClick(task._id || task.id)}
-        sx={{ 
-          mb: 2,
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-          '&:hover': { 
-            transform: 'translateY(-2px)',
-            boxShadow: theme.shadows[4],
-          },
-          opacity: task.completed ? 0.7 : 1,
-        }}
-      >
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-            <Checkbox
-              checked={task.completed || task.status === 'completed'}
-              onChange={(e) => handleTaskCompletionClick(task, e)}
-              onClick={(e) => e.stopPropagation()}
-              sx={{ mt: -1 }}
-              color="success"
-            />
-            
-            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Typography
-                  variant="h6"
-                  component="h3"
-                  sx={{
-                    fontWeight: 600,
-                    textDecoration: task.completed ? 'line-through' : 'none',
-                    color: task.completed ? 'text.secondary' : 'text.primary',
-                  }}
-                >
-                  {task.title}
-                </Typography>
-                <Chip
-                  label={task.priority}
-                  size="small"
-                  color={getPriorityColor(task.priority) as any}
-                  sx={{ height: 20, fontSize: '0.7rem' }}
-                />
+  const TaskCard = ({ task }: { task: Task }) => {
+    const isCompleted = task.status === 'completed';
+    
+    return (
+      <motion.div variants={staggerChild}>
+        <Card 
+          onClick={() => handleTaskClick(task._id)}
+          sx={{ 
+            mb: 2,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            '&:hover': { 
+              transform: 'translateY(-2px)',
+              boxShadow: theme.shadows[4],
+            },
+            opacity: isCompleted ? 0.7 : 1,
+          }}
+        >
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+              <Checkbox
+                checked={isCompleted}
+                onChange={(e) => handleTaskCompletionClick(task, e)}
+                onClick={(e) => e.stopPropagation()}
+                sx={{ mt: -1 }}
+                color="success"
+              />
+              
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Typography
+                    variant="h6"
+                    component="h3"
+                    sx={{
+                      fontWeight: 600,
+                      textDecoration: isCompleted ? 'line-through' : 'none',
+                      color: isCompleted ? 'text.secondary' : 'text.primary',
+                    }}
+                  >
+                    {task.title}
+                  </Typography>
+                  <Chip
+                    label={task.priority}
+                    size="small"
+                    color={getPriorityColor(task.priority) as any}
+                    sx={{ height: 20, fontSize: '0.7rem' }}
+                  />
+                </Box>
+                
+                {task.description && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2, lineHeight: 1.5 }}
+                  >
+                    {task.description}
+                  </Typography>
+                )}
+                
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                  <Chip
+                    label={task.project?.name || 'No Project'}
+                    size="small"
+                    variant="outlined"
+                    sx={{ height: 24 }}
+                  />
+                  <Chip
+                    label={task.status}
+                    size="small"
+                    color={getStatusColor(task.status) as any}
+                    sx={{ height: 24 }}
+                  />
+                  {task.dueDate && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                      <Typography variant="caption" color="text.secondary">
+                        Due {new Date(task.dueDate).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  )}
+                  {task.assignee && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Avatar sx={{ width: 20, height: 20, fontSize: '0.7rem' }}>
+                        {task.assignee.name.split(' ').map((n: string) => n[0]).join('')}
+                      </Avatar>
+                      <Typography variant="caption" color="text.secondary">
+                        {task.assignee.name}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
               </Box>
               
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mb: 2, lineHeight: 1.5 }}
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMenuOpen(e, task._id);
+                }}
               >
-                {task.description}
-              </Typography>
-              
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                <Chip
-                  label={task.project?.name || 'No Project'}
-                  size="small"
-                  variant="outlined"
-                  sx={{ height: 24 }}
-                />
-                <Chip
-                  label={task.status}
-                  size="small"
-                  color={getStatusColor(task.status) as any}
-                  sx={{ height: 24 }}
-                />
-                {task.dueDate && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                    <Typography variant="caption" color="text.secondary">
-                      Due {new Date(task.dueDate).toLocaleDateString()}
-                    </Typography>
-                  </Box>
-                )}
-                {task.assignee && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Avatar sx={{ width: 20, height: 20, fontSize: '0.7rem' }}>
-                      {task.assignee.name.split(' ').map((n: string) => n[0]).join('')}
-                    </Avatar>
-                    <Typography variant="caption" color="text.secondary">
-                      {task.assignee.name}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
+                <MoreVertIcon />
+              </IconButton>
             </Box>
-            
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMenuOpen(e, task._id || task.id);
-              }}
-            >
-              <MoreVertIcon />
-            </IconButton>
-          </Box>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
 
   return (
     <>
@@ -448,7 +452,7 @@ export default function TasksPage() {
       <TaskDetailModal
         taskId={taskDetailId}
         onClose={() => setTaskDetailId(null)}
-        projectId={taskDetailId ? (taskList.find(t => (t._id || t.id) === taskDetailId)?.project?._id || '') : ''}
+        projectId={taskDetailId ? (taskList.find(t => t._id === taskDetailId)?.project?._id || '') : ''}
       />
       <TaskCompletionConfirmModal
         open={completionModalOpen}
@@ -463,326 +467,326 @@ export default function TasksPage() {
         animate="visible"
         variants={staggerContainer}
       >
-      <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
-        {/* Header */}
-        <motion.div variants={staggerChild}>
-          <Box sx={{ mb: 4 }}>
-            <Typography
-              variant={isMobile ? 'h4' : 'h3'}
-              component="h1"
-              gutterBottom
-              sx={{ fontWeight: 700, color: 'text.primary' }}
-            >
-              My Tasks
-            </Typography>
-            <Typography
-              variant="subtitle1"
-              color="text.secondary"
-              sx={{ mb: 3 }}
-            >
-              Manage and track all your tasks across projects
-            </Typography>
-            
-            {/* Search and Filter */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 3, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <TextField
-                placeholder="Search tasks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ flexGrow: 1 }}
-              />
-              <Button
-                variant="outlined"
-                startIcon={<FilterListIcon />}
-                onClick={handleFilterClick}
-                sx={{ minWidth: { xs: 'auto', sm: 120 } }}
-              >
-                Filter
-              </Button>
-            </Box>
-          </Box>
-        </motion.div>
-
-        {/* Tabs */}
-        <motion.div variants={staggerChild}>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="task tabs">
-              <Tab 
-                label={`All Tasks (${filterTasks().length})`} 
-                icon={<AssignmentIcon />}
-                iconPosition="start"
-              />
-              <Tab 
-                label={`Active (${filterTasks('active').length})`} 
-                icon={<ScheduleIcon />}
-                iconPosition="start"
-              />
-              <Tab 
-                label={`Completed (${filterTasks('completed').length})`} 
-                icon={<CheckCircleIcon />}
-                iconPosition="start"
-              />
-            </Tabs>
-          </Box>
-        </motion.div>
-
-        {/* Task Lists */}
-        <TabPanel value={tabValue} index={0}>
-          <motion.div variants={staggerContainer}>
-            {filterTasks().map((task: Task) => (
-              <TaskCard key={task._id || task.id} task={task} />
-            ))}
-          </motion.div>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={1}>
-          <motion.div variants={staggerContainer}>
-            {filterTasks('active').map((task: Task) => (
-              <TaskCard key={task._id || task.id} task={task} />
-            ))}
-          </motion.div>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={2}>
-          <motion.div variants={staggerContainer}>
-            {filterTasks('completed').map((task: Task) => (
-              <TaskCard key={task._id || task.id} task={task} />
-            ))}
-          </motion.div>
-        </TabPanel>
-
-        {/* Empty State */}
-        {filterTasks().length === 0 && (
+        <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
+          {/* Header */}
           <motion.div variants={staggerChild}>
-            <Box
-              sx={{
-                textAlign: 'center',
-                py: 8,
-                px: 2,
-              }}
-            >
-              <AssignmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-              <Typography variant="h6" gutterBottom color="text.secondary">
-                No tasks found
+            <Box sx={{ mb: 4 }}>
+              <Typography
+                variant={isMobile ? 'h4' : 'h3'}
+                component="h1"
+                gutterBottom
+                sx={{ fontWeight: 700, color: 'text.primary' }}
+              >
+                My Tasks
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                {searchQuery ? 'Try adjusting your search query' : 'Create your first task to get started'}
+              <Typography
+                variant="subtitle1"
+                color="text.secondary"
+                sx={{ mb: 3 }}
+              >
+                Manage and track all your tasks across projects
               </Typography>
-              <Button variant="contained" startIcon={<AddIcon />} size="large" onClick={handleCreateTask}>
-                Create New Task
-              </Button>
+              
+              {/* Search and Filter */}
+              <Box sx={{ display: 'flex', gap: 2, mb: 3, flexDirection: { xs: 'column', sm: 'row' } }}>
+                <TextField
+                  placeholder="Search tasks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ flexGrow: 1 }}
+                />
+                <Button
+                  variant="outlined"
+                  startIcon={<FilterListIcon />}
+                  onClick={handleFilterClick}
+                  sx={{ minWidth: { xs: 'auto', sm: 120 } }}
+                >
+                  Filter
+                </Button>
+              </Box>
             </Box>
           </motion.div>
-        )}
 
-        {/* Floating Action Button */}
-        <Fab
-          color="primary"
-          aria-label="add task"
-          onClick={handleCreateTask}
-          sx={{
-            position: 'fixed',
-            bottom: { xs: 80, md: 32 },
-            right: { xs: 16, md: 32 },
-          }}
-        >
-          <AddIcon />
-        </Fab>
-
-        {/* Context Menu */}
-        <Menu
-          id="task-context-menu"
-          open={Boolean(menuPosition)}
-          onClose={handleMenuClose}
-          anchorReference="anchorPosition"
-          anchorPosition={menuPosition ? { top: menuPosition.top, left: menuPosition.left } : undefined}
-          PaperProps={{
-            style: {
-              minWidth: 180,
-              maxWidth: 250,
-              boxShadow: '0px 2px 10px rgba(0,0,0,0.2)',
-              border: '1px solid #e0e0e0',
-            },
-          }}
-        >
-          <MenuItem onClick={(e) => {
-            e.stopPropagation();
-            if (selectedTaskId) {
-              setTaskDetailId(selectedTaskId);
-            }
-            handleMenuClose();
-          }} sx={{ px: 2, py: 1 }}>
-            <ListItemIcon>
-              <EditIcon fontSize="small" />
-            </ListItemIcon>
-            Edit Task
-          </MenuItem>
-          <MenuItem onClick={(e) => {
-            e.stopPropagation();
-            if (selectedTaskId) {
-              const task = taskList.find(t => (t._id || t.id) === selectedTaskId);
-              if (task) {
-                handleTaskCompletionClick(task, { stopPropagation: () => {} } as any);
-              }
-            }
-            handleMenuClose();
-          }} sx={{ px: 2, py: 1 }}>
-            <ListItemIcon>
-              <CheckIcon fontSize="small" />
-            </ListItemIcon>
-            Mark as Complete
-          </MenuItem>
-          <MenuItem onClick={(e) => {
-            e.stopPropagation();
-            handleMenuClose();
-          }} sx={{ px: 2, py: 1 }}>
-            <ListItemIcon>
-              <PriorityHighIcon fontSize="small" />
-            </ListItemIcon>
-            Change Priority
-          </MenuItem>
-          <MenuItem onClick={(e) => {
-            e.stopPropagation();
-            handleMenuClose();
-          }} sx={{ px: 2, py: 1 }}>
-            <ListItemIcon>
-              <FolderSharedIcon fontSize="small" />
-            </ListItemIcon>
-            Assign to Project
-          </MenuItem>
-          <MenuItem onClick={(e) => {
-            e.stopPropagation();
-            handleMenuClose();
-          }} sx={{ px: 2, py: 1, color: 'error.main' }}>
-            <ListItemIcon>
-              <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
-            </ListItemIcon>
-            Delete Task
-          </MenuItem>
-        </Menu>
-
-        {/* Filter Popover */}
-        <Popover
-          open={Boolean(filterAnchorEl)}
-          anchorEl={filterAnchorEl}
-          onClose={handleFilterClose}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'left',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'left',
-          }}
-        >
-          <Box sx={{ p: 3, minWidth: 250 }}>
-            <Typography variant="h6" gutterBottom>
-              Filter Tasks
-            </Typography>
-            
-            <FormControl component="fieldset" sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Priority
-              </Typography>
-              <FormGroup>
-                {Object.entries(filters.priority).map(([priority, checked]) => (
-                  <FormControlLabel
-                    key={priority}
-                    control={
-                      <Checkbox
-                        checked={checked}
-                        onChange={(e) => handleFilterChange('priority', priority, e.target.checked)}
-                        size="small"
-                      />
-                    }
-                    label={priority.charAt(0).toUpperCase() + priority.slice(1)}
-                  />
-                ))}
-              </FormGroup>
-            </FormControl>
-
-            <Divider sx={{ my: 2 }} />
-
-            <FormControl component="fieldset" sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Status
-              </Typography>
-              <FormGroup>
-                {Object.entries(filters.status).map(([status, checked]) => (
-                  <FormControlLabel
-                    key={status}
-                    control={
-                      <Checkbox
-                        checked={checked}
-                        onChange={(e) => handleFilterChange('status', status, e.target.checked)}
-                        size="small"
-                      />
-                    }
-                    label={status === 'in-progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
-                  />
-                ))}
-              </FormGroup>
-            </FormControl>
-
-            <Divider sx={{ my: 2 }} />
-
-            <FormControl component="fieldset" sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Other Filters
-              </Typography>
-              <FormGroup>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={filters.hasProject}
-                      onChange={(e) => setFilters(prev => ({ ...prev, hasProject: e.target.checked }))}
-                      size="small"
-                    />
-                  }
-                  label="Has Project"
+          {/* Tabs */}
+          <motion.div variants={staggerChild}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+              <Tabs value={tabValue} onChange={handleTabChange} aria-label="task tabs">
+                <Tab 
+                  label={`All Tasks (${filterTasks().length})`} 
+                  icon={<AssignmentIcon />}
+                  iconPosition="start"
                 />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={filters.hasDueDate}
-                      onChange={(e) => setFilters(prev => ({ ...prev, hasDueDate: e.target.checked }))}
-                      size="small"
-                    />
-                  }
-                  label="Has Due Date"
+                <Tab 
+                  label={`Active (${filterTasks('active').length})`} 
+                  icon={<ScheduleIcon />}
+                  iconPosition="start"
                 />
-              </FormGroup>
-            </FormControl>
-
-            <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-              <Button
-                onClick={clearAllFilters}
-                variant="outlined"
-                size="small"
-                fullWidth
-              >
-                Clear All
-              </Button>
-              <Button
-                onClick={handleFilterClose}
-                variant="contained"
-                size="small"
-                fullWidth
-              >
-                Apply
-              </Button>
+                <Tab 
+                  label={`Completed (${filterTasks('completed').length})`} 
+                  icon={<CheckCircleIcon />}
+                  iconPosition="start"
+                />
+              </Tabs>
             </Box>
-          </Box>
-        </Popover>
-      </Box>
-    </motion.div>
+          </motion.div>
+
+          {/* Task Lists */}
+          <TabPanel value={tabValue} index={0}>
+            <motion.div variants={staggerContainer}>
+              {filterTasks().map((task: Task) => (
+                <TaskCard key={task._id} task={task} />
+              ))}
+            </motion.div>
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={1}>
+            <motion.div variants={staggerContainer}>
+              {filterTasks('active').map((task: Task) => (
+                <TaskCard key={task._id} task={task} />
+              ))}
+            </motion.div>
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={2}>
+            <motion.div variants={staggerContainer}>
+              {filterTasks('completed').map((task: Task) => (
+                <TaskCard key={task._id} task={task} />
+              ))}
+            </motion.div>
+          </TabPanel>
+
+          {/* Empty State */}
+          {filterTasks().length === 0 && (
+            <motion.div variants={staggerChild}>
+              <Box
+                sx={{
+                  textAlign: 'center',
+                  py: 8,
+                  px: 2,
+                }}
+              >
+                <AssignmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" gutterBottom color="text.secondary">
+                  No tasks found
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  {searchQuery ? 'Try adjusting your search query' : 'Create your first task to get started'}
+                </Typography>
+                <Button variant="contained" startIcon={<AddIcon />} size="large" onClick={handleCreateTask}>
+                  Create New Task
+                </Button>
+              </Box>
+            </motion.div>
+          )}
+
+          {/* Floating Action Button */}
+          <Fab
+            color="primary"
+            aria-label="add task"
+            onClick={handleCreateTask}
+            sx={{
+              position: 'fixed',
+              bottom: { xs: 80, md: 32 },
+              right: { xs: 16, md: 32 },
+            }}
+          >
+            <AddIcon />
+          </Fab>
+
+          {/* Context Menu */}
+          <Menu
+            id="task-context-menu"
+            open={Boolean(menuPosition)}
+            onClose={handleMenuClose}
+            anchorReference="anchorPosition"
+            anchorPosition={menuPosition ? { top: menuPosition.top, left: menuPosition.left } : undefined}
+            PaperProps={{
+              style: {
+                minWidth: 180,
+                maxWidth: 250,
+                boxShadow: '0px 2px 10px rgba(0,0,0,0.2)',
+                border: '1px solid #e0e0e0',
+              },
+            }}
+          >
+            <MenuItem onClick={(e) => {
+              e.stopPropagation();
+              if (selectedTaskId) {
+                setTaskDetailId(selectedTaskId);
+              }
+              handleMenuClose();
+            }} sx={{ px: 2, py: 1 }}>
+              <ListItemIcon>
+                <EditIcon fontSize="small" />
+              </ListItemIcon>
+              Edit Task
+            </MenuItem>
+            <MenuItem onClick={(e) => {
+              e.stopPropagation();
+              if (selectedTaskId) {
+                const task = taskList.find(t => t._id === selectedTaskId);
+                if (task) {
+                  handleTaskCompletionClick(task, { stopPropagation: () => {} } as any);
+                }
+              }
+              handleMenuClose();
+            }} sx={{ px: 2, py: 1 }}>
+              <ListItemIcon>
+                <CheckIcon fontSize="small" />
+              </ListItemIcon>
+              Mark as Complete
+            </MenuItem>
+            <MenuItem onClick={(e) => {
+              e.stopPropagation();
+              handleMenuClose();
+            }} sx={{ px: 2, py: 1 }}>
+              <ListItemIcon>
+                <PriorityHighIcon fontSize="small" />
+              </ListItemIcon>
+              Change Priority
+            </MenuItem>
+            <MenuItem onClick={(e) => {
+              e.stopPropagation();
+              handleMenuClose();
+            }} sx={{ px: 2, py: 1 }}>
+              <ListItemIcon>
+                <FolderSharedIcon fontSize="small" />
+              </ListItemIcon>
+              Assign to Project
+            </MenuItem>
+            <MenuItem onClick={(e) => {
+              e.stopPropagation();
+              handleMenuClose();
+            }} sx={{ px: 2, py: 1, color: 'error.main' }}>
+              <ListItemIcon>
+                <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
+              </ListItemIcon>
+              Delete Task
+            </MenuItem>
+          </Menu>
+
+          {/* Filter Popover */}
+          <Popover
+            open={Boolean(filterAnchorEl)}
+            anchorEl={filterAnchorEl}
+            onClose={handleFilterClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'left',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'left',
+            }}
+          >
+            <Box sx={{ p: 3, minWidth: 250 }}>
+              <Typography variant="h6" gutterBottom>
+                Filter Tasks
+              </Typography>
+              
+              <FormControl component="fieldset" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Priority
+                </Typography>
+                <FormGroup>
+                  {Object.entries(filters.priority).map(([priority, checked]) => (
+                    <FormControlLabel
+                      key={priority}
+                      control={
+                        <Checkbox
+                          checked={checked}
+                          onChange={(e) => handleFilterChange('priority', priority, e.target.checked)}
+                          size="small"
+                        />
+                      }
+                      label={priority.charAt(0).toUpperCase() + priority.slice(1)}
+                    />
+                  ))}
+                </FormGroup>
+              </FormControl>
+
+              <Divider sx={{ my: 2 }} />
+
+              <FormControl component="fieldset" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Status
+                </Typography>
+                <FormGroup>
+                  {Object.entries(filters.status).map(([status, checked]) => (
+                    <FormControlLabel
+                      key={status}
+                      control={
+                        <Checkbox
+                          checked={checked}
+                          onChange={(e) => handleFilterChange('status', status, e.target.checked)}
+                          size="small"
+                        />
+                      }
+                      label={status === 'in-progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
+                    />
+                  ))}
+                </FormGroup>
+              </FormControl>
+
+              <Divider sx={{ my: 2 }} />
+
+              <FormControl component="fieldset" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Other Filters
+                </Typography>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={filters.hasProject}
+                        onChange={(e) => setFilters(prev => ({ ...prev, hasProject: e.target.checked }))}
+                        size="small"
+                      />
+                    }
+                    label="Has Project"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={filters.hasDueDate}
+                        onChange={(e) => setFilters(prev => ({ ...prev, hasDueDate: e.target.checked }))}
+                        size="small"
+                      />
+                    }
+                    label="Has Due Date"
+                  />
+                </FormGroup>
+              </FormControl>
+
+              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                <Button
+                  onClick={clearAllFilters}
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                >
+                  Clear All
+                </Button>
+                <Button
+                  onClick={handleFilterClose}
+                  variant="contained"
+                  size="small"
+                  fullWidth
+                >
+                  Apply
+                </Button>
+              </Box>
+            </Box>
+          </Popover>
+        </Box>
+      </motion.div>
     </>
   );
 }
