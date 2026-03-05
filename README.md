@@ -1,6 +1,3 @@
-Here's the updated README.md with all the optimizations we've implemented:
-
-```markdown
 # TaskFlow 📋✨
 
 > A modern, full-stack task management application built with Next.js and Node.js
@@ -356,4 +353,3 @@ This project is licensed under the ISC License.
 ---
 
 **Built with ❤️ for better project management**
-```
