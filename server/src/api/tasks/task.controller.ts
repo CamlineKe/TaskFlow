@@ -36,11 +36,37 @@ export const getTaskController = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Access denied' });
     }
     
-    res.status(200).json(task);
+    // Transform task to include status based on column
+    const column = task.column as any;
+    let status = 'todo';
+    
+    if (column?.title) {
+      switch (column.title.toLowerCase()) {
+        case 'done':
+        case 'completed':
+          status = 'completed';
+          break;
+        case 'in progress':
+        case 'doing':
+          status = 'in-progress';
+          break;
+        default:
+          status = 'todo';
+      }
+    }
+    
+    const taskWithStatus = {
+      ...task.toObject(),
+      status,
+      completed: status === 'completed',
+    };
+    
+    res.status(200).json(taskWithStatus);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error getting task.', error: error.message });
   }
 };
+
 export const getAllTasksController = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
@@ -70,8 +96,8 @@ export const getAllTasksController = async (req: Request, res: Response) => {
       },
     ]);
     
-    // Transform tasks to include status based on column
-    const tasksWithStatus = await Promise.all(tasks.map(async task => {
+    // Transform tasks to include status based on column WITHOUT updating the database
+    const tasksWithStatus = tasks.map(task => {
       const column = task.column as any;
       let status = 'todo';
       
@@ -90,15 +116,12 @@ export const getAllTasksController = async (req: Request, res: Response) => {
         }
       }
       
-      // Update the task document with the status field
-      await Task.findByIdAndUpdate(task._id, { status });
-      
       return {
         ...task.toObject(),
         status,
         completed: status === 'completed',
       };
-    }));
+    });
     
     res.status(200).json(tasksWithStatus);
   } catch (error: any) {
@@ -114,16 +137,36 @@ export const createTaskController = async (
   try {
     const { title, description, priority, projectId, columnId } = req.body;
 
-    // 1. Create the new task document
+    // Determine status based on column title
+    const column = await Column.findById(columnId);
+    let status = 'todo';
+    
+    if (column?.title) {
+      switch (column.title.toLowerCase()) {
+        case 'done':
+        case 'completed':
+          status = 'completed';
+          break;
+        case 'in progress':
+        case 'doing':
+          status = 'in-progress';
+          break;
+        default:
+          status = 'todo';
+      }
+    }
+
+    // Create the new task document with status
     const newTask = await Task.create({
       title,
       description,
       priority: priority || 'medium',
+      status,
       project: projectId,
       column: columnId,
     });
 
-    // 2. Add the new task's ID to the corresponding column's tasks array
+    // Add the new task's ID to the corresponding column's tasks array
     await Column.findByIdAndUpdate(columnId, {
       $push: { tasks: newTask._id },
     });
@@ -231,6 +274,7 @@ export const updateTaskStatusController = async (
         task: {
           ...task.toObject(),
           status,
+          completed: status === 'completed',
         },
       });
     }
