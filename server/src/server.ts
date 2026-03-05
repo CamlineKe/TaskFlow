@@ -39,9 +39,9 @@ const startServer = async () => {
     await connectDB();
     console.log('✅ MongoDB connected successfully');
 
-    // Initialize Redis cache (don't fail if Redis is unavailable)
+    // Initialize Redis cache (synchronous with Upstash)
     try {
-      await initializeRedis();
+      initializeRedis(); // Removed await since Upstash initialization is synchronous
     } catch (redisError) {
       console.warn('⚠️ Redis initialization failed, continuing without cache:', redisError);
     }
@@ -52,6 +52,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       // This callback function is executed once the server is successfully running.
       console.log(`🚀 Server is running on port ${PORT}`);
+      console.log(`📦 Cache: ${process.env.UPSTASH_REDIS_REST_URL ? 'Upstash Redis enabled' : 'Redis disabled'}`);
     });
   } catch (error) {
     // If any error occurs during the startup process (e.g., database connection fails),

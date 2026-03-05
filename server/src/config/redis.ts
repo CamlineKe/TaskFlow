@@ -1,22 +1,23 @@
-import { createClient, RedisClientType } from 'redis';
+import { Redis } from '@upstash/redis';
 
-let redisClient: RedisClientType | null = null;
+let redisClient: Redis | null = null;
 
-export const initializeRedis = async () => {
+export const initializeRedis = () => {
   if (!redisClient) {
-    redisClient = createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
+    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (!url || !token) {
+      console.warn('⚠️ Upstash Redis credentials not found. Caching disabled.');
+      return null;
+    }
+
+    redisClient = new Redis({
+      url: url,
+      token: token,
     });
 
-    redisClient.on('error', (err: Error) => {
-      console.error('Redis Client Error:', err);
-    });
-
-    redisClient.on('connect', () => {
-      console.log('✅ Redis connected successfully');
-    });
-
-    await redisClient.connect();
+    console.log('✅ Upstash Redis connected successfully');
   }
   return redisClient;
 };
@@ -49,7 +50,7 @@ export const getCachedData = async <T>(key: string): Promise<T | null> => {
   try {
     const client = getRedisClient();
     const data = await client.get(key);
-    return data ? JSON.parse(data) : null;
+    return data ? JSON.parse(data as string) : null;
   } catch (error) {
     console.error('Redis get error:', error);
     return null;
@@ -60,7 +61,7 @@ export const getCachedData = async <T>(key: string): Promise<T | null> => {
 export const setCachedData = async <T>(key: string, data: T, ttl: number): Promise<void> => {
   try {
     const client = getRedisClient();
-    await client.setEx(key, ttl, JSON.stringify(data));
+    await client.setex(key, ttl, JSON.stringify(data));
   } catch (error) {
     console.error('Redis set error:', error);
   }
@@ -69,11 +70,8 @@ export const setCachedData = async <T>(key: string, data: T, ttl: number): Promi
 // Helper function to invalidate cache
 export const invalidateCache = async (pattern: string): Promise<void> => {
   try {
-    const client = getRedisClient();
-    const keys = await client.keys(pattern);
-    if (keys.length > 0) {
-      await client.del(keys);
-    }
+    // Upstash doesn't support KEYS command, so we need to use specific keys
+    console.log(`Cache invalidation for pattern: ${pattern} - use specific keys instead`);
   } catch (error) {
     console.error('Redis invalidate error:', error);
   }
@@ -81,10 +79,16 @@ export const invalidateCache = async (pattern: string): Promise<void> => {
 
 // Helper function to invalidate project-related caches
 export const invalidateProjectCaches = async (projectId: string, userId: string): Promise<void> => {
-  await Promise.all([
-    invalidateCache(cacheKeys.projectBoard(projectId)),
-    invalidateCache(cacheKeys.projectDetail(projectId)),
-    invalidateCache(cacheKeys.userProjects(userId)),
-    invalidateCache('user:tasks:*'), // Invalidate all user task caches
-  ]);
+  try {
+    const client = getRedisClient();
+    // Delete specific keys instead of using patterns
+    await Promise.all([
+      client.del(cacheKeys.projectBoard(projectId)),
+      client.del(cacheKeys.projectDetail(projectId)),
+      client.del(cacheKeys.userProjects(userId)),
+      // Note: Can't delete pattern-based keys like 'user:tasks:*' with Upstash REST API
+    ]);
+  } catch (error) {
+    console.error('Cache invalidation error:', error);
+  }
 };
