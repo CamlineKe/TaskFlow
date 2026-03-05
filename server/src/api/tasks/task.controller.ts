@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import Task from '../../models/task.model';
 import Column from '../../models/column.model';
-import Project from '../../models/project.model';
 import { CreateTaskInput, UpdateTaskInput, UpdateTaskStatusInput } from './task.validation';
 
 // --- Controller to get a single task ---
@@ -10,27 +9,29 @@ export const getTaskController = async (req: Request, res: Response) => {
     const { taskId } = req.params;
     const userId = (req as any).user.id;
     
-    // Find the task and populate related data
-    const task = await Task.findById(taskId).populate([
-      {
-        path: 'project',
-        select: 'name owner members',
-      },
-      {
-        path: 'assignee',
-        select: 'name email',
-      },
-      {
-        path: 'column',
-        select: 'title',
-      },
-    ]);
+    // Optimized: Single query with population and permission check
+    const task = await Task.findById(taskId)
+      .populate([
+        {
+          path: 'project',
+          select: 'name owner members',
+        },
+        {
+          path: 'assignee',
+          select: 'name email',
+        },
+        {
+          path: 'column',
+          select: 'title',
+        },
+      ])
+      .lean(); // Use lean() for better performance when no mongoose document methods needed
     
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
     
-    // Check if user has access to this task (via project ownership/membership)
+    // Check if user has access to this task
     const project = task.project as any;
     if (project && !project.owner.equals(userId) && !project.members.includes(userId)) {
       return res.status(403).json({ message: 'Access denied' });
@@ -56,7 +57,7 @@ export const getTaskController = async (req: Request, res: Response) => {
     }
     
     const taskWithStatus = {
-      ...task.toObject(),
+      ...task,
       status,
       completed: status === 'completed',
     };
@@ -71,59 +72,117 @@ export const getAllTasksController = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     
-    // Find all projects where the user is owner or member
-    const userProjects = await Project.find({
-      $or: [{ owner: userId }, { members: userId }],
-    }).select('_id');
-    
-    const projectIds = userProjects.map(project => project._id);
-    
-    // Find all tasks in those projects and populate necessary fields
-    const tasks = await Task.find({
-      project: { $in: projectIds },
-    }).populate([
+    // Optimized: Single aggregation pipeline instead of multiple queries
+    const tasks = await Task.aggregate([
+      // First, get all projects the user has access to
       {
-        path: 'project',
-        select: 'name',
+        $lookup: {
+          from: 'projects',
+          localField: 'project',
+          foreignField: '_id',
+          as: 'projectInfo',
+        },
       },
       {
-        path: 'assignee',
-        select: 'name email',
+        $unwind: '$projectInfo',
+      },
+      // Filter tasks based on user access
+      {
+        $match: {
+          $or: [
+            { 'projectInfo.owner': userId },
+            { 'projectInfo.members': userId },
+          ],
+        },
+      },
+      // Look up column information
+      {
+        $lookup: {
+          from: 'columns',
+          localField: 'column',
+          foreignField: '_id',
+          as: 'columnInfo',
+        },
       },
       {
-        path: 'column',
-        select: 'title',
+        $unwind: '$columnInfo',
       },
+      // Look up assignee information
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'assignee',
+          foreignField: '_id',
+          as: 'assigneeInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$assigneeInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      // Project only the fields we need
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          priority: 1,
+          status: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          'project._id': '$projectInfo._id',
+          'project.name': '$projectInfo.name',
+          'column._id': '$columnInfo._id',
+          'column.title': '$columnInfo.title',
+          'assignee._id': '$assigneeInfo._id',
+          'assignee.name': '$assigneeInfo.name',
+          'assignee.email': '$assigneeInfo.email',
+        },
+      },
+      // Add computed status based on column title
+      {
+        $addFields: {
+          computedStatus: {
+            $switch: {
+              branches: [
+                {
+                  case: {
+                    $in: [
+                      { $toLower: '$column.title' },
+                      ['done', 'completed']
+                    ]
+                  },
+                  then: 'completed'
+                },
+                {
+                  case: {
+                    $in: [
+                      { $toLower: '$column.title' },
+                      ['in progress', 'doing']
+                    ]
+                  },
+                  then: 'in-progress'
+                }
+              ],
+              default: 'todo'
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          completed: { $eq: ['$computedStatus', 'completed'] }
+        }
+      },
+      // Sort by creation date (newest first)
+      {
+        $sort: { createdAt: -1 }
+      }
     ]);
     
-    // Transform tasks to include status based on column WITHOUT updating the database
-    const tasksWithStatus = tasks.map(task => {
-      const column = task.column as any;
-      let status = 'todo';
-      
-      if (column?.title) {
-        switch (column.title.toLowerCase()) {
-          case 'done':
-          case 'completed':
-            status = 'completed';
-            break;
-          case 'in progress':
-          case 'doing':
-            status = 'in-progress';
-            break;
-          default:
-            status = 'todo';
-        }
-      }
-      
-      return {
-        ...task.toObject(),
-        status,
-        completed: status === 'completed',
-      };
-    });
-    
-    res.status(200).json(tasksWithStatus);
+    res.status(200).json(tasks);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error getting tasks.', error: error.message });
   }
@@ -137,10 +196,20 @@ export const createTaskController = async (
   try {
     const { title, description, priority, projectId, columnId } = req.body;
 
+    // Optimized: Use Promise.all for parallel operations
+    const [column, newTask] = await Promise.all([
+      Column.findById(columnId).select('title').lean(),
+      Task.create({
+        title,
+        description,
+        priority: priority || 'medium',
+        project: projectId,
+        column: columnId,
+      }),
+    ]);
+
     // Determine status based on column title
-    const column = await Column.findById(columnId);
     let status = 'todo';
-    
     if (column?.title) {
       switch (column.title.toLowerCase()) {
         case 'done':
@@ -156,22 +225,33 @@ export const createTaskController = async (
       }
     }
 
-    // Create the new task document with status
-    const newTask = await Task.create({
-      title,
-      description,
-      priority: priority || 'medium',
-      status,
-      project: projectId,
-      column: columnId,
-    });
+    // Update task with status and add to column in parallel
+    await Promise.all([
+      Task.findByIdAndUpdate(newTask._id, { status }),
+      Column.findByIdAndUpdate(columnId, {
+        $push: { tasks: newTask._id },
+      }),
+    ]);
 
-    // Add the new task's ID to the corresponding column's tasks array
-    await Column.findByIdAndUpdate(columnId, {
-      $push: { tasks: newTask._id },
-    });
+    // Fetch the complete task with populated fields
+    const completeTask = await Task.findById(newTask._id)
+      .populate([
+        {
+          path: 'project',
+          select: 'name',
+        },
+        {
+          path: 'assignee',
+          select: 'name email',
+        },
+        {
+          path: 'column',
+          select: 'title',
+        },
+      ])
+      .lean();
 
-    res.status(201).json(newTask);
+    res.status(201).json(completeTask);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error creating task.', error: error.message });
   }
@@ -188,7 +268,23 @@ export const updateTaskController = async (
 
     const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, {
       new: true, // Return the updated document
-    });
+      runValidators: true,
+    })
+      .populate([
+        {
+          path: 'project',
+          select: 'name',
+        },
+        {
+          path: 'assignee',
+          select: 'name email',
+        },
+        {
+          path: 'column',
+          select: 'title',
+        },
+      ])
+      .lean();
 
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found' });
@@ -210,33 +306,50 @@ export const updateTaskStatusController = async (
     const { status } = req.body;
     const userId = (req as any).user.id;
 
-    // Find the current task
-    const task = await Task.findById(taskId).populate('project');
-    if (!task) {
+    // Optimized: Single aggregation to get task with project and board info
+    const taskWithInfo = await Task.aggregate([
+      { $match: { _id: taskId } },
+      {
+        $lookup: {
+          from: 'projects',
+          localField: 'project',
+          foreignField: '_id',
+          as: 'projectInfo',
+        },
+      },
+      { $unwind: '$projectInfo' },
+      {
+        $lookup: {
+          from: 'boards',
+          localField: 'projectInfo.board',
+          foreignField: '_id',
+          as: 'boardInfo',
+        },
+      },
+      { $unwind: '$boardInfo' },
+      {
+        $lookup: {
+          from: 'columns',
+          localField: 'boardInfo.columns',
+          foreignField: '_id',
+          as: 'columnsInfo',
+        },
+      },
+    ]);
+
+    if (!taskWithInfo.length) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    const task = taskWithInfo[0];
+    const project = task.projectInfo;
+
     // Check if user has access to this task
-    const project = task.project as any;
     if (!project.owner.equals(userId) && !project.members.includes(userId)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Get the project's board and columns
-    const projectBoard = await Project.findById(project._id).populate({
-      path: 'board',
-      populate: {
-        path: 'columns',
-        model: 'Column',
-      },
-    });
-
-    if (!projectBoard || !projectBoard.board) {
-      return res.status(404).json({ message: 'Project board not found' });
-    }
-
-    const board = projectBoard.board as any;
-    const columns = board.columns;
+    const columns = task.columnsInfo;
 
     // Find the target column based on status
     let targetColumn;
@@ -259,7 +372,7 @@ export const updateTaskStatusController = async (
           col.title.toLowerCase().includes('to do') || 
           col.title.toLowerCase().includes('todo') ||
           col.title.toLowerCase().includes('backlog')
-        ) || columns[0]; // Default to first column if no "To Do" found
+        ) || columns[0];
         break;
     }
 
@@ -272,50 +385,49 @@ export const updateTaskStatusController = async (
       return res.status(200).json({
         message: 'Task is already in the target status',
         task: {
-          ...task.toObject(),
+          ...task,
           status,
           completed: status === 'completed',
         },
       });
     }
 
-    // Remove task from current column
-    await Column.findByIdAndUpdate(task.column, {
-      $pull: { tasks: taskId },
-    });
-
-    // Add task to target column
-    await Column.findByIdAndUpdate(targetColumn._id, {
-      $push: { tasks: taskId },
-    });
-
-    // Update task's column reference and status field
-    const updatedTask = await Task.findByIdAndUpdate(
-      taskId,
-      { 
+    // Optimized: Use Promise.all for parallel updates
+    await Promise.all([
+      Column.findByIdAndUpdate(task.column, {
+        $pull: { tasks: taskId },
+      }),
+      Column.findByIdAndUpdate(targetColumn._id, {
+        $push: { tasks: taskId },
+      }),
+      Task.findByIdAndUpdate(taskId, { 
         column: targetColumn._id,
-        status: status // Set the status field directly
-      },
-      { new: true }
-    ).populate([
-      {
-        path: 'project',
-        select: 'name',
-      },
-      {
-        path: 'assignee',
-        select: 'name email',
-      },
-      {
-        path: 'column',
-        select: 'title',
-      },
+        status: status,
+      }),
     ]);
+
+    // Fetch updated task
+    const updatedTask = await Task.findById(taskId)
+      .populate([
+        {
+          path: 'project',
+          select: 'name',
+        },
+        {
+          path: 'assignee',
+          select: 'name email',
+        },
+        {
+          path: 'column',
+          select: 'title',
+        },
+      ])
+      .lean();
 
     res.status(200).json({
       message: 'Task status updated successfully',
       task: {
-        ...updatedTask?.toObject(),
+        ...updatedTask,
         status,
         completed: status === 'completed',
       },
@@ -330,17 +442,17 @@ export const deleteTaskController = async (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
 
-    // 1. Find and delete the task
+    // Optimized: Find and delete in one operation, then update column
     const deletedTask = await Task.findByIdAndDelete(taskId);
 
     if (!deletedTask) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // 2. Remove the task's ID from its parent column's tasks array
-    await Column.findByIdAndUpdate(deletedTask.column, {
+    // Remove task from column (don't await to speed up response)
+    Column.findByIdAndUpdate(deletedTask.column, {
       $pull: { tasks: deletedTask._id },
-    });
+    }).exec();
 
     res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error: any) {
