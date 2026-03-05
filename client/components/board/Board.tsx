@@ -12,7 +12,6 @@ import {
   useSensors,
   closestCorners,
 } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
 import { Box, CircularProgress, Alert, Typography } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -43,6 +42,18 @@ const fetchBoardData = async (projectId: string): Promise<BoardData> => {
   return data;
 };
 
+// Helper function to determine status based on column title
+const getStatusFromColumnTitle = (title: string): string => {
+  const lowercaseTitle = title.toLowerCase();
+  if (lowercaseTitle.includes('done') || lowercaseTitle.includes('complete')) {
+    return 'completed';
+  } else if (lowercaseTitle.includes('progress') || lowercaseTitle.includes('doing')) {
+    return 'in-progress';
+  } else {
+    return 'todo';
+  }
+};
+
 export function Board({ projectId }: BoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -64,17 +75,16 @@ export function Board({ projectId }: BoardProps) {
   const moveTaskMutation = useMutation({
     mutationFn: async ({
       taskId,
-      sourceColumnId,
       targetColumnId,
     }: {
       taskId: string;
-      sourceColumnId: string;
       targetColumnId: string;
     }) => {
-      const response = await apiClient.put(`/tasks/${taskId}/move`, {
-        sourceColumnId,
-        targetColumnId,
-      });
+      // Find the target column title to determine status
+      const targetColumn = board?.columns.find(col => col._id === targetColumnId);
+      const status = targetColumn ? getStatusFromColumnTitle(targetColumn.title) : 'todo';
+      
+      const response = await apiClient.put(`/tasks/${taskId}/status`, { status });
       return response.data;
     },
     onSuccess: () => {
@@ -115,13 +125,11 @@ export function Board({ projectId }: BoardProps) {
     // Find source and target columns
     let sourceColumn: Column | undefined;
     let targetColumn: Column | undefined;
-    let activeTask: Task | undefined;
 
     board?.columns.forEach(column => {
       const task = column.tasks.find(t => t._id === activeId);
       if (task) {
         sourceColumn = column;
-        activeTask = task;
       }
       if (column._id === overId) {
         targetColumn = column;
@@ -139,10 +147,9 @@ export function Board({ projectId }: BoardProps) {
     }
 
     // If source and target are different, move the task
-    if (sourceColumn && targetColumn && sourceColumn._id !== targetColumn._id && activeTask) {
+    if (sourceColumn && targetColumn && sourceColumn._id !== targetColumn._id) {
       moveTaskMutation.mutate({
         taskId: activeId,
-        sourceColumnId: sourceColumn._id,
         targetColumnId: targetColumn._id,
       });
     }
