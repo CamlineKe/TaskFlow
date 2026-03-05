@@ -4,11 +4,22 @@ import Project from '../../models/project.model';
 import Board, { IBoard } from '../../models/board.model';
 import Column from '../../models/column.model';
 import { CreateProjectInput, UpdateProjectInput, DeleteProjectInput } from './project.validation';
+import { cacheKeys, CACHE_TTL, getCachedData, setCachedData, invalidateProjectCaches } from '../../config/redis';
 
 // --- Controller to get all projects for the authenticated user ---
 export const getAllProjectsController = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
+    const cacheKey = cacheKeys.userProjects(userId);
+
+    // Try to get from cache first
+    const cachedProjects = await getCachedData<any[]>(cacheKey);
+    if (cachedProjects) {
+      console.log('✅ Serving projects from cache for user:', userId);
+      return res.status(200).json(cachedProjects);
+    }
+
+    console.log('📦 Cache miss - fetching projects from DB for user:', userId);
     
     // Optimized: Select only needed fields from Project
     const projects = await Project.find({
@@ -29,7 +40,7 @@ export const getAllProjectsController = async (req: Request, res: Response) => {
         },
       },
     })
-    .lean(); // Use lean() for better performance
+    .lean();
 
     // Calculate task statistics for each project
     const projectsWithStats = projects.map(project => {
@@ -63,6 +74,9 @@ export const getAllProjectsController = async (req: Request, res: Response) => {
       };
     });
 
+    // Store in cache
+    await setCachedData(cacheKey, projectsWithStats, CACHE_TTL.PROJECT_LIST);
+
     res.status(200).json(projectsWithStats);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error getting projects.', error: error.message });
@@ -74,10 +88,20 @@ export const getProjectController = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const userId = (req as any).user.id;
+    const cacheKey = cacheKeys.projectDetail(projectId);
 
     if (!isValidObjectId(projectId)) {
       return res.status(400).json({ message: 'Invalid Project ID' });
     }
+
+    // Try to get from cache first
+    const cachedProject = await getCachedData<any>(cacheKey);
+    if (cachedProject) {
+      console.log('✅ Serving project detail from cache:', projectId);
+      return res.status(200).json(cachedProject);
+    }
+
+    console.log('📦 Cache miss - fetching project detail from DB:', projectId);
 
     // Optimized: Select only needed fields at each level
     const project = await Project.findOne({
@@ -96,7 +120,7 @@ export const getProjectController = async (req: Request, res: Response) => {
         populate: {
           path: 'tasks',
           model: 'Task',
-          select: 'title description priority assignee', // Select only needed task fields
+          select: 'title description priority assignee',
           populate: {
             path: 'assignee',
             select: 'name email',
@@ -148,6 +172,9 @@ export const getProjectController = async (req: Request, res: Response) => {
       completedTasks,
     };
 
+    // Store in cache
+    await setCachedData(cacheKey, projectWithDetails, CACHE_TTL.PROJECT_DETAIL);
+
     res.status(200).json(projectWithDetails);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error getting project.', error: error.message });
@@ -158,10 +185,20 @@ export const getProjectController = async (req: Request, res: Response) => {
 export const getProjectBoardController = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
+    const cacheKey = cacheKeys.projectBoard(projectId);
 
     if (!isValidObjectId(projectId)) {
       return res.status(400).json({ message: 'Invalid Project ID' });
     }
+
+    // Try to get from cache first
+    const cachedBoard = await getCachedData<any>(cacheKey);
+    if (cachedBoard) {
+      console.log('✅ Serving board from cache for project:', projectId);
+      return res.status(200).json(cachedBoard);
+    }
+
+    console.log('📦 Cache miss - fetching board from DB for project:', projectId);
 
     // Optimized: Select only needed fields for board view
     const project = await Project.findById(projectId)
@@ -175,7 +212,7 @@ export const getProjectBoardController = async (req: Request, res: Response) => 
           populate: {
             path: 'tasks',
             model: 'Task',
-            select: 'title description priority assignee', // Select only needed task fields
+            select: 'title description priority assignee',
             populate: {
               path: 'assignee',
               select: 'name email',
@@ -200,6 +237,9 @@ export const getProjectBoardController = async (req: Request, res: Response) => 
       name: project.name,
       columns: (populatedBoard as any).columns,
     };
+
+    // Store in cache
+    await setCachedData(cacheKey, boardData, CACHE_TTL.BOARD);
 
     res.status(200).json(boardData);
   } catch (error: any) {
@@ -245,9 +285,15 @@ export const createProjectController = async (
       newBoard.save(),
     ]);
 
-    // Return only necessary project data
+    // Convert ObjectId to string for cache invalidation
+    const projectId = (newProject._id as Schema.Types.ObjectId).toString();
+    
+    // Invalidate user's projects cache
+    await invalidateProjectCaches(projectId, ownerId);
+
+    // Return only necessary project data with _id as string
     res.status(201).json({
-      _id: newProject._id,
+      _id: projectId,
       name: newProject.name,
       description: newProject.description,
       status: newProject.status,
@@ -293,6 +339,9 @@ export const updateProjectController = async (
     .populate('owner', 'name email')
     .lean();
 
+    // Invalidate caches
+    await invalidateProjectCaches(projectId, userId);
+
     res.status(200).json(updatedProject);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error updating project.', error: error.message });
@@ -332,6 +381,9 @@ export const deleteProjectController = async (
 
     // Delete the project
     await Project.findByIdAndDelete(projectId);
+
+    // Invalidate caches
+    await invalidateProjectCaches(projectId, userId);
 
     res.status(200).json({ message: 'Project deleted successfully' });
   } catch (error: any) {

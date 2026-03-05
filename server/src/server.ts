@@ -3,7 +3,8 @@
  * Its primary responsibilities are:
  * 1. Loading environment variables.
  * 2. Establishing a connection to the database.
- * 3. Starting the Express server to listen for incoming HTTP requests.
+ * 3. Initializing Redis cache.
+ * 4. Starting the Express server to listen for incoming HTTP requests.
  */
 
 // Import the 'dotenv' library to load environment variables from a .env file
@@ -17,6 +18,9 @@ import app from './app';
 
 // Import the database connection function from our config file.
 import connectDB from './config/database';
+
+// Import Redis initialization function
+import { initializeRedis } from './config/redis';
 
 // Determine the port to run the server on.
 // It will try to use the PORT variable from the .env file first.
@@ -33,18 +37,26 @@ const startServer = async () => {
     // The 'await' keyword ensures that we wait for the connection to be
     // established before proceeding to start the server.
     await connectDB();
+    console.log('✅ MongoDB connected successfully');
+
+    // Initialize Redis cache (don't fail if Redis is unavailable)
+    try {
+      await initializeRedis();
+    } catch (redisError) {
+      console.warn('⚠️ Redis initialization failed, continuing without cache:', redisError);
+    }
 
     // If the database connection is successful, start the Express server.
     // The app.listen() method binds the server to the specified port
     // and starts listening for incoming connections.
     app.listen(PORT, () => {
       // This callback function is executed once the server is successfully running.
-      console.log(`Server is running on port ${PORT}`);
+      console.log(`🚀 Server is running on port ${PORT}`);
     });
   } catch (error) {
     // If any error occurs during the startup process (e.g., database connection fails),
     // it will be caught here.
-    console.error('Failed to start the server:', error);
+    console.error('❌ Failed to start the server:', error);
 
     // Exit the Node.js process with a "failure" code (1).
     // This is important for deployment environments, as it signals that the
