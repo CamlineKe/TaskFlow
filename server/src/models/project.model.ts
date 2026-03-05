@@ -51,6 +51,25 @@ const projectSchema = new Schema<IProject>({
   timestamps: true,
 });
 
+// ========== INDEXES FOR PERFORMANCE ==========
+// Compound index for finding projects by owner or members (used in getAllProjectsController)
+projectSchema.index({ owner: 1, members: 1 });
+
+// Index for finding a specific project by ID with owner/members check
+projectSchema.index({ _id: 1, owner: 1, members: 1 });
+
+// Index for filtering projects by status
+projectSchema.index({ status: 1 });
+
+// Index for sorting by due date
+projectSchema.index({ dueDate: 1 });
+
+// Index for sorting by creation date (newest first)
+projectSchema.index({ createdAt: -1 });
+
+// Compound index for searching projects by name and description
+projectSchema.index({ name: 'text', description: 'text' });
+
 // 3. Create and export the Mongoose model.
 const Project = model<IProject>('Project', projectSchema);
 
