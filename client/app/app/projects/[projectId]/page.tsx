@@ -20,6 +20,8 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  Tab,
+  Tabs,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -31,6 +33,8 @@ import {
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as RadioButtonUncheckedIcon,
   ArrowBack as ArrowBackIcon,
+  ViewList as ViewListIcon,
+  Dashboard as DashboardIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -42,6 +46,7 @@ import apiClient from '@/lib/axios';
 import { CreateTaskModalForProject } from '@/components/projects/CreateTaskModalForProject';
 import { TaskCompletionConfirmModal } from '@/components/tasks/TaskCompletionConfirmModal';
 import { EditProjectModal } from '@/components/projects/EditProjectModal';
+import { Board } from '@/components/board/Board';
 
 interface Task {
   _id: string;
@@ -120,6 +125,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [tabValue, setTabValue] = useState(0);
   const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
   const [editProjectModalOpen, setEditProjectModalOpen] = useState(false);
@@ -156,11 +162,16 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
       toast.success('Task status updated successfully!');
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['board', projectId] });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update task status');
     },
   });
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
 
   const handleTaskCompletionClick = (task: Task, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -316,104 +327,143 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
               </CardContent>
             </Card>
 
-            {/* Tasks */}
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Tasks ({totalTasks})
-                  </Typography>
-                  <Button 
-                    variant="outlined" 
-                    size="small"
-                    onClick={() => setCreateTaskModalOpen(true)}
-                  >
-                    Add Task
-                  </Button>
-                </Box>
-                
-                {project.tasks && project.tasks.length > 0 ? (
-                  <List sx={{ p: 0 }}>
-                    {project.tasks.map((task, index) => (
-                      <ListItem
-                        key={task._id}
-                        sx={{
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 1,
-                          mb: 1,
-                          '&:last-child': { mb: 0 },
-                        }}
-                      >
-                        <ListItemIcon>
-                          {task.status === 'completed' ? (
-                            <CheckCircleIcon 
-                              color="success" 
-                              sx={{ cursor: 'pointer' }}
-                              onClick={(e) => handleTaskCompletionClick(task, e)}
-                            />
-                          ) : (
-                            <RadioButtonUncheckedIcon 
-                              color="action" 
-                              sx={{ cursor: 'pointer' }}
-                              onClick={(e) => handleTaskCompletionClick(task, e)}
-                            />
-                          )}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography
-                                variant="body1"
-                                sx={{
-                                  textDecoration: task.status === 'completed' ? 'line-through' : 'none',
-                                  opacity: task.status === 'completed' ? 0.7 : 1,
-                                }}
-                              >
-                                {task.title}
-                              </Typography>
-                              <Chip
-                                label={task.priority}
-                                size="small"
-                                color={getPriorityColor(task.priority) as any}
-                                variant="outlined"
-                              />
-                            </Box>
-                          }
-                          secondary={
-                            <Box sx={{ mt: 0.5 }}>
-                              {task.description && (
-                                <Typography variant="body2" color="text.secondary">
-                                  {task.description}
-                                </Typography>
-                              )}
-                              {task.assignee && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                                  <PersonIcon fontSize="small" color="action" />
-                                  <Typography variant="caption" color="text.secondary">
-                                    {task.assignee.name}
-                                  </Typography>
-                                </Box>
-                              )}
-                            </Box>
-                          }
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                ) : (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <AssignmentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="body1" color="text.secondary">
-                      No tasks found
+            {/* View Tabs */}
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+              <Tabs value={tabValue} onChange={handleTabChange} aria-label="project view tabs">
+                <Tab 
+                  icon={<ViewListIcon />} 
+                  label="List View" 
+                  iconPosition="start"
+                />
+                <Tab 
+                  icon={<DashboardIcon />} 
+                  label="Board View" 
+                  iconPosition="start"
+                />
+              </Tabs>
+            </Box>
+
+            {/* List View */}
+            {tabValue === 0 && (
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Tasks ({totalTasks})
                     </Typography>
-                    <Typography variant="body2" color="text.disabled">
-                      Create your first task to get started
-                    </Typography>
+                    <Button 
+                      variant="outlined" 
+                      size="small"
+                      onClick={() => setCreateTaskModalOpen(true)}
+                    >
+                      Add Task
+                    </Button>
                   </Box>
-                )}
-              </CardContent>
-            </Card>
+                  
+                  {project.tasks && project.tasks.length > 0 ? (
+                    <List sx={{ p: 0 }}>
+                      {project.tasks.map((task) => (
+                        <ListItem
+                          key={task._id}
+                          sx={{
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 1,
+                            mb: 1,
+                            '&:last-child': { mb: 0 },
+                          }}
+                        >
+                          <ListItemIcon>
+                            {task.status === 'completed' ? (
+                              <CheckCircleIcon 
+                                color="success" 
+                                sx={{ cursor: 'pointer' }}
+                                onClick={(e) => handleTaskCompletionClick(task, e)}
+                              />
+                            ) : (
+                              <RadioButtonUncheckedIcon 
+                                color="action" 
+                                sx={{ cursor: 'pointer' }}
+                                onClick={(e) => handleTaskCompletionClick(task, e)}
+                              />
+                            )}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography
+                                  variant="body1"
+                                  sx={{
+                                    textDecoration: task.status === 'completed' ? 'line-through' : 'none',
+                                    opacity: task.status === 'completed' ? 0.7 : 1,
+                                  }}
+                                >
+                                  {task.title}
+                                </Typography>
+                                <Chip
+                                  label={task.priority}
+                                  size="small"
+                                  color={getPriorityColor(task.priority) as any}
+                                  variant="outlined"
+                                />
+                              </Box>
+                            }
+                            secondary={
+                              <Box sx={{ mt: 0.5 }}>
+                                {task.description && (
+                                  <Typography variant="body2" color="text.secondary">
+                                    {task.description}
+                                  </Typography>
+                                )}
+                                {task.assignee && (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                                    <PersonIcon fontSize="small" color="action" />
+                                    <Typography variant="caption" color="text.secondary">
+                                      {task.assignee.name}
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  ) : (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <AssignmentIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                      <Typography variant="body1" color="text.secondary">
+                        No tasks found
+                      </Typography>
+                      <Typography variant="body2" color="text.disabled">
+                        Create your first task to get started
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Board View */}
+            {tabValue === 1 && (
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Kanban Board
+                    </Typography>
+                    <Button 
+                      variant="outlined" 
+                      size="small"
+                      onClick={() => setCreateTaskModalOpen(true)}
+                    >
+                      Add Task
+                    </Button>
+                  </Box>
+                  <Board projectId={projectId} />
+                </CardContent>
+              </Card>
+            )}
           </Grid>
 
           {/* Sidebar */}
