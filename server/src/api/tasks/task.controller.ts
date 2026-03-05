@@ -14,18 +14,18 @@ export const getTaskController = async (req: Request, res: Response) => {
       .populate([
         {
           path: 'project',
-          select: 'name owner members',
+          select: 'name owner members', // Keep minimal project fields
         },
         {
           path: 'assignee',
-          select: 'name email',
+          select: 'name email', // Keep minimal user fields
         },
         {
           path: 'column',
-          select: 'title',
+          select: 'title', // Only need column title for status
         },
       ])
-      .lean(); // Use lean() for better performance when no mongoose document methods needed
+      .lean(); // Use lean() for better performance
     
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -56,10 +56,19 @@ export const getTaskController = async (req: Request, res: Response) => {
       }
     }
     
+    // Return only necessary fields
     const taskWithStatus = {
-      ...task,
+      _id: task._id,
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
       status,
       completed: status === 'completed',
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+      project: task.project ? { _id: (task.project as any)._id, name: (task.project as any).name } : undefined,
+      assignee: task.assignee,
+      column: task.column ? { _id: (task.column as any)._id, title: (task.column as any).title } : undefined,
     };
     
     res.status(200).json(taskWithStatus);
@@ -72,7 +81,7 @@ export const getAllTasksController = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     
-    // Optimized: Single aggregation pipeline instead of multiple queries
+    // Optimized: Single aggregation pipeline with field selection
     const tasks = await Task.aggregate([
       // First, get all projects the user has access to
       {
@@ -122,29 +131,34 @@ export const getAllTasksController = async (req: Request, res: Response) => {
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Project only the fields we need
+      // Project only the fields we need (minimal)
       {
         $project: {
           _id: 1,
           title: 1,
           description: 1,
           priority: 1,
-          status: 1,
           createdAt: 1,
           updatedAt: 1,
-          'project._id': '$projectInfo._id',
-          'project.name': '$projectInfo.name',
-          'column._id': '$columnInfo._id',
-          'column.title': '$columnInfo.title',
-          'assignee._id': '$assigneeInfo._id',
-          'assignee.name': '$assigneeInfo.name',
-          'assignee.email': '$assigneeInfo.email',
+          'project': {
+            _id: '$projectInfo._id',
+            name: '$projectInfo.name',
+          },
+          'column': {
+            _id: '$columnInfo._id',
+            title: '$columnInfo.title',
+          },
+          'assignee': {
+            _id: '$assigneeInfo._id',
+            name: '$assigneeInfo.name',
+            email: '$assigneeInfo.email',
+          },
         },
       },
       // Add computed status based on column title
       {
         $addFields: {
-          computedStatus: {
+          status: {
             $switch: {
               branches: [
                 {
@@ -173,7 +187,7 @@ export const getAllTasksController = async (req: Request, res: Response) => {
       },
       {
         $addFields: {
-          completed: { $eq: ['$computedStatus', 'completed'] }
+          completed: { $eq: ['$status', 'completed'] }
         }
       },
       // Sort by creation date (newest first)
@@ -233,25 +247,18 @@ export const createTaskController = async (
       }),
     ]);
 
-    // Fetch the complete task with populated fields
-    const completeTask = await Task.findById(newTask._id)
-      .populate([
-        {
-          path: 'project',
-          select: 'name',
-        },
-        {
-          path: 'assignee',
-          select: 'name email',
-        },
-        {
-          path: 'column',
-          select: 'title',
-        },
-      ])
-      .lean();
-
-    res.status(201).json(completeTask);
+    // Return minimal task data
+    res.status(201).json({
+      _id: newTask._id,
+      title: newTask.title,
+      description: newTask.description,
+      priority: newTask.priority,
+      status,
+      project: { _id: projectId },
+      column: { _id: columnId, title: column?.title },
+      createdAt: newTask.createdAt,
+      updatedAt: newTask.updatedAt,
+    });
   } catch (error: any) {
     res.status(500).json({ message: 'Server error creating task.', error: error.message });
   }
@@ -267,9 +274,10 @@ export const updateTaskController = async (
     const updateData = req.body;
 
     const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, {
-      new: true, // Return the updated document
+      new: true,
       runValidators: true,
     })
+      .select('title description priority project column assignee createdAt updatedAt')
       .populate([
         {
           path: 'project',
@@ -306,7 +314,7 @@ export const updateTaskStatusController = async (
     const { status } = req.body;
     const userId = (req as any).user.id;
 
-    // Optimized: Single aggregation to get task with project and board info
+    // Optimized: Single aggregation with field selection
     const taskWithInfo = await Task.aggregate([
       { $match: { _id: taskId } },
       {
@@ -315,6 +323,9 @@ export const updateTaskStatusController = async (
           localField: 'project',
           foreignField: '_id',
           as: 'projectInfo',
+          pipeline: [
+            { $project: { owner: 1, members: 1, board: 1 } }
+          ],
         },
       },
       { $unwind: '$projectInfo' },
@@ -324,6 +335,9 @@ export const updateTaskStatusController = async (
           localField: 'projectInfo.board',
           foreignField: '_id',
           as: 'boardInfo',
+          pipeline: [
+            { $project: { columns: 1 } }
+          ],
         },
       },
       { $unwind: '$boardInfo' },
@@ -333,8 +347,12 @@ export const updateTaskStatusController = async (
           localField: 'boardInfo.columns',
           foreignField: '_id',
           as: 'columnsInfo',
+          pipeline: [
+            { $project: { title: 1 } }
+          ],
         },
       },
+      { $project: { column: 1, 'projectInfo.owner': 1, 'projectInfo.members': 1, columnsInfo: 1 } }
     ]);
 
     if (!taskWithInfo.length) {
@@ -384,11 +402,7 @@ export const updateTaskStatusController = async (
     if (task.column.toString() === targetColumn._id.toString()) {
       return res.status(200).json({
         message: 'Task is already in the target status',
-        task: {
-          ...task,
-          status,
-          completed: status === 'completed',
-        },
+        task: { _id: taskId, status, completed: status === 'completed' },
       });
     }
 
@@ -406,31 +420,10 @@ export const updateTaskStatusController = async (
       }),
     ]);
 
-    // Fetch updated task
-    const updatedTask = await Task.findById(taskId)
-      .populate([
-        {
-          path: 'project',
-          select: 'name',
-        },
-        {
-          path: 'assignee',
-          select: 'name email',
-        },
-        {
-          path: 'column',
-          select: 'title',
-        },
-      ])
-      .lean();
-
+    // Return minimal success response
     res.status(200).json({
       message: 'Task status updated successfully',
-      task: {
-        ...updatedTask,
-        status,
-        completed: status === 'completed',
-      },
+      task: { _id: taskId, status, completed: status === 'completed' },
     });
   } catch (error: any) {
     res.status(500).json({ message: 'Server error updating task status.', error: error.message });
@@ -442,14 +435,14 @@ export const deleteTaskController = async (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
 
-    // Optimized: Find and delete in one operation, then update column
-    const deletedTask = await Task.findByIdAndDelete(taskId);
+    // Optimized: Find and delete in one operation
+    const deletedTask = await Task.findByIdAndDelete(taskId).select('column').lean();
 
     if (!deletedTask) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Remove task from column (don't await to speed up response)
+    // Remove task from column (fire and forget)
     Column.findByIdAndUpdate(deletedTask.column, {
       $pull: { tasks: deletedTask._id },
     }).exec();

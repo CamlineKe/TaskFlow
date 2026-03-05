@@ -9,18 +9,27 @@ import { CreateProjectInput, UpdateProjectInput, DeleteProjectInput } from './pr
 export const getAllProjectsController = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
+    
+    // Optimized: Select only needed fields from Project
     const projects = await Project.find({
       $or: [{ owner: userId }, { members: userId }],
-    }).populate('owner', 'name email').populate({
+    })
+    .select('name description status dueDate createdAt updatedAt owner board')
+    .populate('owner', 'name email')
+    .populate({
       path: 'board',
+      select: 'columns',
       populate: {
         path: 'columns',
+        select: 'title tasks',
         populate: {
           path: 'tasks',
           model: 'Task',
+          select: '_id', // Only need task IDs for counting
         },
       },
-    });
+    })
+    .lean(); // Use lean() for better performance
 
     // Calculate task statistics for each project
     const projectsWithStats = projects.map(project => {
@@ -70,23 +79,32 @@ export const getProjectController = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid Project ID' });
     }
 
+    // Optimized: Select only needed fields at each level
     const project = await Project.findOne({
       _id: projectId,
       $or: [{ owner: userId }, { members: userId }],
-    }).populate('owner', 'name email').populate('members', 'name email').populate({
+    })
+    .select('name description status dueDate createdAt updatedAt owner members board')
+    .populate('owner', 'name email')
+    .populate('members', 'name email')
+    .populate({
       path: 'board',
+      select: 'columns',
       populate: {
         path: 'columns',
+        select: 'title tasks',
         populate: {
           path: 'tasks',
           model: 'Task',
+          select: 'title description priority assignee', // Select only needed task fields
           populate: {
             path: 'assignee',
             select: 'name email',
           },
         },
       },
-    });
+    })
+    .lean();
 
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
@@ -103,7 +121,7 @@ export const getProjectController = async (req: Request, res: Response) => {
           totalTasks += column.tasks.length;
           column.tasks.forEach((task: any) => {
             tasks.push({
-              ...task.toObject(),
+              ...task,
               status: column.title === 'Done' ? 'completed' : 
                      column.title === 'In Progress' ? 'in-progress' : 'todo',
             });
@@ -145,16 +163,27 @@ export const getProjectBoardController = async (req: Request, res: Response) => 
       return res.status(400).json({ message: 'Invalid Project ID' });
     }
 
-    const project = await Project.findById(projectId).populate({
-      path: 'board',
-      populate: {
-        path: 'columns',
+    // Optimized: Select only needed fields for board view
+    const project = await Project.findById(projectId)
+      .select('name board')
+      .populate({
+        path: 'board',
+        select: 'columns',
         populate: {
-          path: 'tasks',
-          model: 'Task',
+          path: 'columns',
+          select: 'title tasks',
+          populate: {
+            path: 'tasks',
+            model: 'Task',
+            select: 'title description priority assignee', // Select only needed task fields
+            populate: {
+              path: 'assignee',
+              select: 'name email',
+            },
+          },
         },
-      },
-    });
+      })
+      .lean();
 
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
@@ -162,14 +191,14 @@ export const getProjectBoardController = async (req: Request, res: Response) => 
 
     const populatedBoard = project.board as IBoard;
 
-    if (!populatedBoard || !populatedBoard.columns) {
+    if (!populatedBoard || !(populatedBoard as any).columns) {
         return res.status(500).json({ message: 'Server error: Board or columns could not be populated.' });
     }
 
     const boardData = {
       _id: project._id,
       name: project.name,
-      columns: populatedBoard.columns,
+      columns: (populatedBoard as any).columns,
     };
 
     res.status(200).json(boardData);
@@ -216,7 +245,18 @@ export const createProjectController = async (
       newBoard.save(),
     ]);
 
-    res.status(201).json(newProject);
+    // Return only necessary project data
+    res.status(201).json({
+      _id: newProject._id,
+      name: newProject.name,
+      description: newProject.description,
+      status: newProject.status,
+      dueDate: newProject.dueDate,
+      createdAt: newProject.createdAt,
+      updatedAt: newProject.updatedAt,
+      owner: newProject.owner,
+      board: newProject.board,
+    });
   } catch (error: any) {
     res.status(500).json({ message: 'Server error creating project.', error: error.message });
   }
@@ -233,7 +273,7 @@ export const updateProjectController = async (
     const userId = (req as any).user.id;
 
     // Check if the project exists and user has permission to update it
-    const project = await Project.findById(projectId);
+    const project = await Project.findById(projectId).select('owner').lean();
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
@@ -243,12 +283,15 @@ export const updateProjectController = async (
       return res.status(403).json({ message: 'Only project owner can update the project' });
     }
 
-    // Update the project
+    // Update the project and return only necessary fields
     const updatedProject = await Project.findByIdAndUpdate(
       projectId,
       updateData,
       { new: true, runValidators: true }
-    ).populate('owner', 'name email');
+    )
+    .select('name description status dueDate updatedAt owner')
+    .populate('owner', 'name email')
+    .lean();
 
     res.status(200).json(updatedProject);
   } catch (error: any) {
@@ -266,7 +309,7 @@ export const deleteProjectController = async (
     const userId = (req as any).user.id;
 
     // Check if the project exists and user has permission to delete it
-    const project = await Project.findById(projectId);
+    const project = await Project.findById(projectId).select('owner board').lean();
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
@@ -278,12 +321,10 @@ export const deleteProjectController = async (
 
     // Delete associated board and columns
     if (project.board) {
-      const board = await Board.findById(project.board);
+      const board = await Board.findById(project.board).select('columns').lean();
       if (board && board.columns) {
         // Delete all columns and their tasks
         await Column.deleteMany({ _id: { $in: board.columns } });
-        // Note: Tasks will be cascade deleted when columns are deleted
-        // due to the column deletion removing tasks from their arrays
       }
       // Delete the board
       await Board.findByIdAndDelete(project.board);
