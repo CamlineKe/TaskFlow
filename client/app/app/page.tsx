@@ -129,12 +129,23 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // FIXED: Proper status color mapping
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'success';
       case 'in-progress': return 'warning';
-      case 'pending': return 'info';
+      case 'todo': return 'info';
       default: return 'default';
+    }
+  };
+
+  // NEW: Helper function to format status labels
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'todo': return 'To Do';
+      case 'in-progress': return 'In Progress';
+      case 'completed': return 'Completed';
+      default: return status;
     }
   };
 
@@ -346,7 +357,7 @@ export default function DashboardPage() {
                                   {task.project?.name || 'No Project'}
                                 </Typography>
                                 <Chip 
-                                  label={task.status || 'pending'} 
+                                  label={getStatusLabel(task.status)} 
                                   size="small" 
                                   color={getStatusColor(task.status) as any}
                                   sx={{ height: 20, fontSize: '0.7rem' }}
