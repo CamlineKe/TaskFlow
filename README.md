@@ -69,23 +69,23 @@ TaskFlow/
 │   │   ├── board/         # Kanban board components
 │   │   ├── projects/      # Project-related components
 │   │   ├── tasks/         # Task-related components
-│   │   ├── ui/           # Generic UI components
+│   │   ├── ui/            # Generic UI components
 │   │   └── providers/     # Context providers
-│   ├── lib/              # Utility libraries and configurations
-│   ├── store/            # Zustand state management
-│   └── context/          # React contexts
+│   ├── lib/               # Utility libraries and configurations
+│   ├── store/             # Zustand state management
+│   └── context/           # React contexts
 ├── server/                # Node.js backend application
 │   └── src/
-│       ├── api/          # API routes and controllers
-│       │   ├── auth/     # Authentication endpoints
-│       │   ├── projects/ # Project management API
-│       │   ├── tasks/    # Task management API
-│       │   ├── users/    # User management API
-│       │   └── columns/  # Board column API
-│       ├── models/       # MongoDB/Mongoose models
-│       ├── middleware/   # Express middleware
-│       ├── utils/        # Utility functions
-│       └── config/       # Configuration files
+│       ├── api/           # API routes and controllers
+│       │   ├── auth/      # Authentication endpoints
+│       │   ├── projects/  # Project management API
+│       │   ├── tasks/     # Task management API
+│       │   ├── users/     # User management API
+│       │   └── columns/   # Board column API
+│       ├── models/        # MongoDB/Mongoose models
+│       ├── middleware/    # Express middleware
+│       ├── utils/         # Utility functions
+│       └── config/        # Configuration files
 └── README.md
 ```
 
