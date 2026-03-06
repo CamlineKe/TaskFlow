@@ -50,9 +50,25 @@ export const getCachedData = async <T>(key: string): Promise<T | null> => {
   try {
     const client = getRedisClient();
     const data = await client.get(key);
-    return data ? JSON.parse(data as string) : null;
-  } catch (error) {
-    console.error('Redis get error:', error);
+    
+    if (!data) return null;
+    
+    // Handle if data is already an object
+    if (typeof data === 'object') {
+      return data as T;
+    }
+    
+    // Try to parse if it's a string
+    if (typeof data === 'string') {
+      try {
+        return JSON.parse(data) as T;
+      } catch {
+        return null;
+      }
+    }
+    
+    return data as T;
+  } catch {
     return null;
   }
 };
@@ -61,34 +77,31 @@ export const getCachedData = async <T>(key: string): Promise<T | null> => {
 export const setCachedData = async <T>(key: string, data: T, ttl: number): Promise<void> => {
   try {
     const client = getRedisClient();
-    await client.setex(key, ttl, JSON.stringify(data));
-  } catch (error) {
-    console.error('Redis set error:', error);
+    const stringData = JSON.stringify(data);
+    await client.setex(key, ttl, stringData);
+  } catch {
+    // Silently fail - cache errors shouldn't break the app
   }
 };
 
-// Helper function to invalidate cache
-export const invalidateCache = async (pattern: string): Promise<void> => {
-  try {
-    // Upstash doesn't support KEYS command, so we need to use specific keys
-    console.log(`Cache invalidation for pattern: ${pattern} - use specific keys instead`);
-  } catch (error) {
-    console.error('Redis invalidate error:', error);
-  }
+// Helper function to invalidate cache - kept for API compatibility
+export const invalidateCache = async (_pattern: string): Promise<void> => {
+  // Upstash doesn't support pattern-based deletion
+  // This function is kept for API compatibility but does nothing
+  return Promise.resolve();
 };
 
 // Helper function to invalidate project-related caches
 export const invalidateProjectCaches = async (projectId: string, userId: string): Promise<void> => {
   try {
     const client = getRedisClient();
-    // Delete specific keys instead of using patterns
+    
     await Promise.all([
       client.del(cacheKeys.projectBoard(projectId)),
       client.del(cacheKeys.projectDetail(projectId)),
       client.del(cacheKeys.userProjects(userId)),
-      // Note: Can't delete pattern-based keys like 'user:tasks:*' with Upstash REST API
     ]);
-  } catch (error) {
-    console.error('Cache invalidation error:', error);
+  } catch {
+    // Silently fail - cache errors shouldn't break the app
   }
 };
