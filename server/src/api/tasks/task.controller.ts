@@ -1,14 +1,16 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import Task from '../../models/task.model';
 import Column from '../../models/column.model';
 import { CreateTaskInput, UpdateTaskInput, UpdateTaskStatusInput } from './task.validation';
+import { invalidateProjectCaches } from '../../config/redis';
 
 // --- Controller to get a single task ---
 export const getTaskController = async (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
     const userId = (req as any).user.id;
-    
+
     // Optimized: Single query with population and permission check
     const task = await Task.findById(taskId)
       .populate([
@@ -26,21 +28,21 @@ export const getTaskController = async (req: Request, res: Response) => {
         },
       ])
       .lean(); // Use lean() for better performance
-    
+
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
-    
+
     // Check if user has access to this task
     const project = task.project as any;
     if (project && !project.owner.equals(userId) && !project.members.includes(userId)) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    
+
     // Transform task to include status based on column
     const column = task.column as any;
     let status = 'todo';
-    
+
     if (column?.title) {
       switch (column.title.toLowerCase()) {
         case 'done':
@@ -55,7 +57,7 @@ export const getTaskController = async (req: Request, res: Response) => {
           status = 'todo';
       }
     }
-    
+
     // Return only necessary fields
     const taskWithStatus = {
       _id: task._id,
@@ -70,7 +72,7 @@ export const getTaskController = async (req: Request, res: Response) => {
       assignee: task.assignee,
       column: task.column ? { _id: (task.column as any)._id, title: (task.column as any).title } : undefined,
     };
-    
+
     res.status(200).json(taskWithStatus);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error getting task.', error: error.message });
@@ -79,8 +81,9 @@ export const getTaskController = async (req: Request, res: Response) => {
 
 export const getAllTasksController = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
-    
+    const rawUserId = (req as any).user.id;
+    const userId = new Types.ObjectId(rawUserId);
+
     // Optimized: Single aggregation pipeline with field selection
     const tasks = await Task.aggregate([
       // First, get all projects the user has access to
@@ -149,9 +152,15 @@ export const getAllTasksController = async (req: Request, res: Response) => {
             title: '$columnInfo.title',
           },
           'assignee': {
-            _id: '$assigneeInfo._id',
-            name: '$assigneeInfo.name',
-            email: '$assigneeInfo.email',
+            $cond: {
+              if: { $ifNull: ['$assigneeInfo._id', false] },
+              then: {
+                _id: '$assigneeInfo._id',
+                name: '$assigneeInfo.name',
+                email: '$assigneeInfo.email',
+              },
+              else: '$$REMOVE',
+            },
           },
         },
       },
@@ -195,7 +204,7 @@ export const getAllTasksController = async (req: Request, res: Response) => {
         $sort: { createdAt: -1 }
       }
     ]);
-    
+
     res.status(200).json(tasks);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error getting tasks.', error: error.message });
@@ -246,6 +255,9 @@ export const createTaskController = async (
         $push: { tasks: newTask._id },
       }),
     ]);
+
+    // Invalidate project caches to show the new task
+    await invalidateProjectCaches(projectId, (req as any).user.id);
 
     // Return minimal task data
     res.status(201).json({
@@ -312,11 +324,13 @@ export const updateTaskStatusController = async (
   try {
     const { taskId } = req.params;
     const { status } = req.body;
-    const userId = (req as any).user.id;
+    const rawUserId = (req as any).user.id;
+    const userId = new Types.ObjectId(rawUserId);
+    const taskObjectId = new Types.ObjectId(taskId);
 
     // Optimized: Single aggregation with field selection
     const taskWithInfo = await Task.aggregate([
-      { $match: { _id: taskId } },
+      { $match: { _id: taskObjectId } },
       {
         $lookup: {
           from: 'projects',
@@ -373,21 +387,21 @@ export const updateTaskStatusController = async (
     let targetColumn;
     switch (status) {
       case 'completed':
-        targetColumn = columns.find((col: any) => 
-          col.title.toLowerCase().includes('done') || 
+        targetColumn = columns.find((col: any) =>
+          col.title.toLowerCase().includes('done') ||
           col.title.toLowerCase().includes('complete')
         );
         break;
       case 'in-progress':
-        targetColumn = columns.find((col: any) => 
-          col.title.toLowerCase().includes('progress') || 
+        targetColumn = columns.find((col: any) =>
+          col.title.toLowerCase().includes('progress') ||
           col.title.toLowerCase().includes('doing')
         );
         break;
       case 'todo':
       default:
-        targetColumn = columns.find((col: any) => 
-          col.title.toLowerCase().includes('to do') || 
+        targetColumn = columns.find((col: any) =>
+          col.title.toLowerCase().includes('to do') ||
           col.title.toLowerCase().includes('todo') ||
           col.title.toLowerCase().includes('backlog')
         ) || columns[0];
@@ -414,11 +428,17 @@ export const updateTaskStatusController = async (
       Column.findByIdAndUpdate(targetColumn._id, {
         $push: { tasks: taskId },
       }),
-      Task.findByIdAndUpdate(taskId, { 
+      Task.findByIdAndUpdate(taskId, {
         column: targetColumn._id,
         status: status,
       }),
     ]);
+
+    // Invalidate project caches
+    const taskDetails = await Task.findById(taskId).select('project').lean();
+    if (taskDetails) {
+      await invalidateProjectCaches((taskDetails.project as any).toString(), rawUserId);
+    }
 
     // Return minimal success response
     res.status(200).json({

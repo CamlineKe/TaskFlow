@@ -47,7 +47,7 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/axios';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
@@ -74,9 +74,11 @@ interface Task {
   };
 }
 
-// API fetch function
+// API fetch function with logging
 const fetchTasks = async (): Promise<Task[]> => {
+  console.log('🔍 Fetching tasks...');
   const { data } = await apiClient.get('/tasks');
+  console.log('📥 Tasks API response:', data);
   return data;
 };
 
@@ -133,7 +135,7 @@ export default function TasksPage() {
   const [taskDetailId, setTaskDetailId] = useState<string | null>(null);
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
   const [taskToComplete, setTaskToComplete] = useState<{ id: string; title: string; isCompleting: boolean } | null>(null);
-  
+
   // Filter states
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [filters, setFilters] = useState({
@@ -150,7 +152,7 @@ export default function TasksPage() {
     hasProject: false,
     hasDueDate: false,
   });
-  
+
   const queryClient = useQueryClient();
 
   // Fetch tasks from API
@@ -158,6 +160,17 @@ export default function TasksPage() {
     queryKey: ['tasks'],
     queryFn: fetchTasks,
   });
+
+  // Log tasks whenever they change
+  useEffect(() => {
+    console.log('📊 Tasks in component:', tasks);
+    console.log('📊 Task counts:', {
+      total: tasks?.length || 0,
+      completed: tasks?.filter(t => t.status === 'completed').length || 0,
+      inProgress: tasks?.filter(t => t.status === 'in-progress').length || 0,
+      todo: tasks?.filter(t => t.status === 'todo').length || 0,
+    });
+  }, [tasks]);
 
   // Use empty array as fallback
   const taskList = tasks || [];
@@ -294,15 +307,15 @@ export default function TasksPage() {
 
   const filterTasks = (status?: string): Task[] => {
     let filtered = taskList;
-    
+
     if (status === 'completed') {
       filtered = filtered.filter((task: Task) => task.status === 'completed');
     } else if (status === 'active') {
       filtered = filtered.filter((task: Task) => task.status !== 'completed');
     }
-    
+
     if (searchQuery) {
-      filtered = filtered.filter((task: Task) => 
+      filtered = filtered.filter((task: Task) =>
         task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         task.project?.name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
@@ -329,22 +342,22 @@ export default function TasksPage() {
     if (filters.hasDueDate) {
       filtered = filtered.filter((task: Task) => task.dueDate);
     }
-    
+
     return filtered;
   };
 
   const TaskCard = ({ task }: { task: Task }) => {
     const isCompleted = task.status === 'completed';
-    
+
     return (
       <motion.div variants={staggerChild}>
-        <Card 
+        <Card
           onClick={() => handleTaskClick(task._id)}
-          sx={{ 
+          sx={{
             mb: 2,
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            '&:hover': { 
+            '&:hover': {
               transform: 'translateY(-2px)',
               boxShadow: theme.shadows[4],
             },
@@ -360,7 +373,7 @@ export default function TasksPage() {
                 sx={{ mt: -1 }}
                 color="success"
               />
-              
+
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <Typography
@@ -381,7 +394,7 @@ export default function TasksPage() {
                     sx={{ height: 20, fontSize: '0.7rem' }}
                   />
                 </Box>
-                
+
                 {task.description && (
                   <Typography
                     variant="body2"
@@ -391,7 +404,7 @@ export default function TasksPage() {
                     {task.description}
                   </Typography>
                 )}
-                
+
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                   <Chip
                     label={task.project?.name || 'No Project'}
@@ -413,7 +426,7 @@ export default function TasksPage() {
                       </Typography>
                     </Box>
                   )}
-                  {task.assignee && (
+                  {task.assignee && task.assignee.name && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <Avatar sx={{ width: 20, height: 20, fontSize: '0.7rem' }}>
                         {task.assignee.name.split(' ').map((n: string) => n[0]).join('')}
@@ -425,7 +438,7 @@ export default function TasksPage() {
                   )}
                 </Box>
               </Box>
-              
+
               <IconButton
                 size="small"
                 onClick={(e) => {
@@ -461,7 +474,7 @@ export default function TasksPage() {
         taskTitle={taskToComplete?.title || ''}
         isCompleting={taskToComplete?.isCompleting || false}
       />
-      
+
       <motion.div
         initial="hidden"
         animate="visible"
@@ -486,7 +499,7 @@ export default function TasksPage() {
               >
                 Manage and track all your tasks across projects
               </Typography>
-              
+
               {/* Search and Filter */}
               <Box sx={{ display: 'flex', gap: 2, mb: 3, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <TextField
@@ -518,18 +531,18 @@ export default function TasksPage() {
           <motion.div variants={staggerChild}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs value={tabValue} onChange={handleTabChange} aria-label="task tabs">
-                <Tab 
-                  label={`All Tasks (${filterTasks().length})`} 
+                <Tab
+                  label={`All Tasks (${filterTasks().length})`}
                   icon={<AssignmentIcon />}
                   iconPosition="start"
                 />
-                <Tab 
-                  label={`Active (${filterTasks('active').length})`} 
+                <Tab
+                  label={`Active (${filterTasks('active').length})`}
                   icon={<ScheduleIcon />}
                   iconPosition="start"
                 />
-                <Tab 
-                  label={`Completed (${filterTasks('completed').length})`} 
+                <Tab
+                  label={`Completed (${filterTasks('completed').length})`}
                   icon={<CheckCircleIcon />}
                   iconPosition="start"
                 />
@@ -633,7 +646,7 @@ export default function TasksPage() {
               if (selectedTaskId) {
                 const task = taskList.find(t => t._id === selectedTaskId);
                 if (task) {
-                  handleTaskCompletionClick(task, { stopPropagation: () => {} } as any);
+                  handleTaskCompletionClick(task, { stopPropagation: () => { } } as any);
                 }
               }
               handleMenuClose();
@@ -690,7 +703,7 @@ export default function TasksPage() {
               <Typography variant="h6" gutterBottom>
                 Filter Tasks
               </Typography>
-              
+
               <FormControl component="fieldset" sx={{ mb: 2 }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Priority
