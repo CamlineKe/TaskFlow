@@ -58,7 +58,7 @@ const staggerChild = {
   visible: { opacity: 1, y: 0 },
 };
 
-// API fetch functions
+// API fetch functions - FIXED VERSION
 const fetchDashboardStats = async () => {
   const [projectsRes, tasksRes] = await Promise.all([
     apiClient.get('/projects'),
@@ -74,18 +74,24 @@ const fetchDashboardStats = async () => {
     inProgressTasks: tasks.filter((t: any) => t.status === 'in-progress').length,
     pendingTasks: tasks.filter((t: any) => t.status === 'todo').length,
     overdueTasks: tasks.filter((t: any) => {
-      return new Date(t.dueDate) < new Date() && t.status !== 'completed';
+      // Fix: Check if dueDate exists before comparing
+      return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed';
     }).length,
     activeProjects: projects.filter((p: any) => p.status === 'active').length,
     recentTasks: tasks.slice(0, 4),
     recentProjects: projects.slice(0, 3).map((p: any) => {
-      const projectTasks = tasks.filter((t: any) => t.project?._id === p._id);
+      // Fix: Handle both populated project objects and project IDs
+      const projectTasks = tasks.filter((t: any) => 
+        (t.project?._id === p._id) || (t.project === p._id)
+      );
       const completedProjectTasks = projectTasks.filter((t: any) => t.status === 'completed');
       return {
         ...p,
         completedTasks: completedProjectTasks.length,
         totalTasks: projectTasks.length,
-        progress: projectTasks.length > 0 ? Math.round((completedProjectTasks.length / projectTasks.length) * 100) : 0
+        progress: projectTasks.length > 0 
+          ? Math.round((completedProjectTasks.length / projectTasks.length) * 100) 
+          : 0
       };
     })
   };
