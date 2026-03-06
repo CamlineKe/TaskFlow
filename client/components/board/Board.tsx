@@ -88,9 +88,11 @@ export function Board({ projectId }: BoardProps) {
       return response.data;
     },
     onSuccess: () => {
+      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['board', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Add dashboard invalidation
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to move task');

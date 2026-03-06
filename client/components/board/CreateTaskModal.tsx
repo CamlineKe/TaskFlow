@@ -46,7 +46,11 @@ export function CreateTaskModal({ open, onClose, projectId, columnId }: CreateTa
     mutationFn: createTask,
     onSuccess: () => {
       toast.success('Task created successfully!');
+      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['projectBoard', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Add this line
       reset();
       onClose();
     },
@@ -70,7 +74,6 @@ export function CreateTaskModal({ open, onClose, projectId, columnId }: CreateTa
             autoFocus
             {...register('title')}
             error={!!errors.title}
-            // --- THIS IS THE FIX ---
             helperText={errors.title?.message} 
           />
           <Button

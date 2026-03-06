@@ -92,8 +92,12 @@ export function TaskDetailModal({ taskId, onClose, projectId }: TaskDetailModalP
     mutationFn: updateTask,
     onSuccess: () => {
       toast.success('Task updated successfully!');
+      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['task', taskId] });
       queryClient.invalidateQueries({ queryKey: ['projectBoard', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Add dashboard invalidation
       onClose();
     },
     onError: (error: any) => {
@@ -105,7 +109,11 @@ export function TaskDetailModal({ taskId, onClose, projectId }: TaskDetailModalP
     mutationFn: deleteTask,
     onSuccess: () => {
       toast.success('Task deleted successfully!');
+      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ['projectBoard', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Add dashboard invalidation
       onClose(); // Close the main detail modal as well
     },
     onError: (error: any) => {
