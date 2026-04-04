@@ -369,7 +369,7 @@ export function ProjectCard({ project, viewMode = 'grid' }: ProjectCardProps) {
       
       <CardActions sx={{ px: 2, pb: 2 }}>
         <Button size="small" onClick={(e) => { e.stopPropagation(); handleViewTasks(e); }}>
-          View Details
+          View Project
         </Button>
       </CardActions>
       
