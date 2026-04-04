@@ -58,44 +58,49 @@ const staggerChild = {
   visible: { opacity: 1, y: 0 },
 };
 
-// API fetch functions - FIXED VERSION
+// API fetch function - Optimized single endpoint with caching
 const fetchDashboardStats = async () => {
-  const [projectsRes, tasksRes] = await Promise.all([
-    apiClient.get('/projects'),
-    apiClient.get('/tasks')
-  ]);
-  
-  const projects = projectsRes.data;
-  const tasks = tasksRes.data;
-  
-  return {
-    totalTasks: tasks.length,
-    completedTasks: tasks.filter((t: any) => t.status === 'completed').length,
-    inProgressTasks: tasks.filter((t: any) => t.status === 'in-progress').length,
-    pendingTasks: tasks.filter((t: any) => t.status === 'todo').length,
-    overdueTasks: tasks.filter((t: any) => {
-      // Fix: Check if dueDate exists before comparing
-      return t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed';
-    }).length,
-    activeProjects: projects.filter((p: any) => p.status === 'active').length,
-    recentTasks: tasks.slice(0, 4),
-    recentProjects: projects.slice(0, 3).map((p: any) => {
-      // Fix: Handle both populated project objects and project IDs
-      const projectTasks = tasks.filter((t: any) => 
-        (t.project?._id === p._id) || (t.project === p._id)
-      );
-      const completedProjectTasks = projectTasks.filter((t: any) => t.status === 'completed');
-      return {
-        ...p,
-        completedTasks: completedProjectTasks.length,
-        totalTasks: projectTasks.length,
-        progress: projectTasks.length > 0 
-          ? Math.round((completedProjectTasks.length / projectTasks.length) * 100) 
-          : 0
-      };
-    })
-  };
+  console.log('🔍 Fetching dashboard stats...');
+  const { data } = await apiClient.get('/projects/dashboard/stats');
+  console.log('📥 Dashboard stats response:', data);
+  return data;
 };
+
+// Task interface
+interface Task {
+  _id: string;
+  title: string;
+  description?: string;
+  status: 'todo' | 'in-progress' | 'completed';
+  priority: 'low' | 'medium' | 'high';
+  dueDate?: string;
+  project?: {
+    _id: string;
+    name: string;
+  };
+  assignee?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+}
+
+interface DashboardStats {
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  pendingTasks: number;
+  overdueTasks: number;
+  activeProjects: number;
+  recentTasks: Task[];
+  recentProjects: {
+    _id: string;
+    name: string;
+    totalTasks: number;
+    completedTasks: number;
+    progress: number;
+  }[];
+}
 
 export default function DashboardPage() {
   const theme = useTheme();
@@ -104,10 +109,14 @@ export default function DashboardPage() {
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Fetch dashboard data
-  const { data: dashboardData, isLoading, isError } = useQuery({
+  // Fetch dashboard data with caching
+  const { data: dashboardData, isLoading, isError } = useQuery<DashboardStats>({
     queryKey: ['dashboard'],
     queryFn: fetchDashboardStats,
+    staleTime: 2 * 60 * 1000, // 2 minutes - data considered fresh
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
+    refetchOnWindowFocus: false, // Don't refetch when switching tabs
+    refetchOnMount: 'always', // Refetch on mount but show cached data first
   });
 
   // Fallback to empty data if loading or error

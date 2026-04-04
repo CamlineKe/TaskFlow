@@ -1,12 +1,215 @@
 import { Request, Response } from 'express';
-import { Schema, isValidObjectId } from 'mongoose';
+import { Schema, isValidObjectId, Types } from 'mongoose';
 import Project from '../../models/project.model';
+import Task from '../../models/task.model';
 import Board, { IBoard } from '../../models/board.model';
 import Column from '../../models/column.model';
 import { CreateProjectInput, UpdateProjectInput, DeleteProjectInput } from './project.validation';
 import { cacheKeys, CACHE_TTL, getCachedData, setCachedData, invalidateProjectCaches } from '../../config/redis';
 
-// --- Controller to get all projects for the authenticated user ---
+// --- Controller to get dashboard stats (optimized single endpoint) ---
+export const getDashboardStatsController = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const cacheKey = `dashboard:stats:${userId}`;
+
+    // Try to get from cache first
+    const cachedStats = await getCachedData<any>(cacheKey);
+    if (cachedStats) {
+      console.log('✅ Serving dashboard stats from cache for user:', userId);
+      return res.status(200).json(cachedStats);
+    }
+
+    // Optimized: Use aggregation pipeline for efficient stats calculation
+    const userObjectId = new Types.ObjectId(userId);
+
+    // Get all task stats in a single aggregation
+    const taskStats = await Task.aggregate([
+      {
+        $lookup: {
+          from: 'projects',
+          localField: 'project',
+          foreignField: '_id',
+          as: 'projectInfo',
+        },
+      },
+      { $unwind: '$projectInfo' },
+      {
+        $match: {
+          $or: [
+            { 'projectInfo.owner': userObjectId },
+            { 'projectInfo.members': userObjectId },
+          ],
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalTasks: { $sum: 1 },
+          completedTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] },
+          },
+          inProgressTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'in-progress'] }, 1, 0] },
+          },
+          pendingTasks: {
+            $sum: { $cond: [{ $eq: ['$status', 'todo'] }, 1, 0] },
+          },
+          overdueTasks: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ifNull: ['$dueDate', false] },
+                    { $lt: ['$dueDate', new Date()] },
+                    { $ne: ['$status', 'completed'] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    // Get project count
+    const activeProjects = await Project.countDocuments({
+      $or: [{ owner: userId }, { members: userId }],
+      status: 'active',
+    });
+
+    // Get recent tasks (last 4)
+    const recentTasks = await Task.aggregate([
+      {
+        $lookup: {
+          from: 'projects',
+          localField: 'project',
+          foreignField: '_id',
+          as: 'projectInfo',
+        },
+      },
+      { $unwind: '$projectInfo' },
+      {
+        $match: {
+          $or: [
+            { 'projectInfo.owner': userObjectId },
+            { 'projectInfo.members': userObjectId },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: 'columns',
+          localField: 'column',
+          foreignField: '_id',
+          as: 'columnInfo',
+        },
+      },
+      { $unwind: '$columnInfo' },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'assignee',
+          foreignField: '_id',
+          as: 'assigneeInfo',
+        },
+      },
+      {
+        $unwind: {
+          path: '$assigneeInfo',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          priority: 1,
+          status: 1,
+          dueDate: 1,
+          createdAt: 1,
+          project: {
+            _id: '$projectInfo._id',
+            name: '$projectInfo.name',
+          },
+          assignee: {
+            $cond: {
+              if: { $ifNull: ['$assigneeInfo._id', false] },
+              then: {
+                _id: '$assigneeInfo._id',
+                name: '$assigneeInfo.name',
+                email: '$assigneeInfo.email',
+              },
+              else: '$$REMOVE',
+            },
+          },
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      { $limit: 4 },
+    ]);
+
+    // Get recent projects with task counts (last 3)
+    const recentProjects = await Project.find({
+      $or: [{ owner: userId }, { members: userId }],
+    })
+      .select('name status createdAt')
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .lean();
+
+    // Calculate project progress
+    const projectsWithProgress = await Promise.all(
+      recentProjects.map(async (project) => {
+        const taskCounts = await Task.aggregate([
+          { $match: { project: project._id } },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              completed: {
+                $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] },
+              },
+            },
+          },
+        ]);
+
+        const totalTasks = taskCounts[0]?.total || 0;
+        const completedTasks = taskCounts[0]?.completed || 0;
+        const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+        return {
+          _id: project._id,
+          name: project.name,
+          totalTasks,
+          completedTasks,
+          progress,
+        };
+      })
+    );
+
+    const stats = {
+      totalTasks: taskStats[0]?.totalTasks || 0,
+      completedTasks: taskStats[0]?.completedTasks || 0,
+      inProgressTasks: taskStats[0]?.inProgressTasks || 0,
+      pendingTasks: taskStats[0]?.pendingTasks || 0,
+      overdueTasks: taskStats[0]?.overdueTasks || 0,
+      activeProjects,
+      recentTasks,
+      recentProjects: projectsWithProgress,
+    };
+
+    // Cache for 2 minutes (shorter than other data since dashboard needs fresh stats)
+    await setCachedData(cacheKey, stats, 120);
+
+    res.status(200).json(stats);
+  } catch (error: any) {
+    res.status(500).json({ message: 'Server error getting dashboard stats.', error: error.message });
+  }
+};
 export const getAllProjectsController = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;

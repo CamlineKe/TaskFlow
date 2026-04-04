@@ -6,6 +6,7 @@ import {
   getProjectBoardController,
   updateProjectController,
   deleteProjectController,
+  getDashboardStatsController,
 } from './project.controller';
 import { validate } from '../../middleware/validation.middleware';
 import { authMiddleware } from '../../middleware/auth.middleware';
@@ -15,6 +16,9 @@ const router = Router();
 
 // All project routes are protected
 router.use(authMiddleware);
+
+// GET /api/projects/dashboard/stats - Get dashboard statistics (optimized)
+router.get('/dashboard/stats', getDashboardStatsController);
 
 // GET /api/projects - Get all projects for the logged-in user
 router.get('/', getAllProjectsController);
