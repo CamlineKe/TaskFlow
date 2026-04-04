@@ -25,6 +25,9 @@ const boardSchema = new Schema<IBoard>({
   timestamps: true,
 });
 
+// Index for finding board by project (used in getProjectBoardController)
+boardSchema.index({ project: 1 });
+
 // 3. Create and export the Mongoose model.
 const Board = model<IBoard>('Board', boardSchema);
 

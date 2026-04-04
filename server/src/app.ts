@@ -6,9 +6,7 @@ const app: Application = express();
 
 // ========== 1. CORS MIDDLEWARE (MUST BE FIRST) ==========
 app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`🌐 CORS: ${req.method} ${req.path} from ${req.headers.origin}`);
-  
-  // List of allowed origins - USE YOUR ACTUAL DOMAINS
+  // List of allowed origins
   const allowedOrigins = [
     'http://localhost:3000',  // Local development
     'http://localhost:3001',  // Alternative local port
@@ -21,15 +19,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // Check if the request origin is in the allowed list
   if (origin && allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
-    console.log(`✅ Allowed origin: ${origin}`);
   } else if (process.env.NODE_ENV !== 'production') {
     // In development, allow any origin
     res.header('Access-Control-Allow-Origin', origin || '*');
-    console.log(`⚠️ Development mode, allowing: ${origin || '*'}`);
   } else {
     // In production, default to your frontend
     res.header('Access-Control-Allow-Origin', 'https://taskflow-zeta-dusky.vercel.app');
-    console.log(`🔒 Production, defaulting to frontend`);
   }
   
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -39,7 +34,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   
   // Handle preflight requests immediately
   if (req.method === 'OPTIONS') {
-    console.log('🌐 CORS: Handling OPTIONS preflight');
     res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
     return res.status(200).end();
   }
@@ -48,6 +42,18 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // ========== 2. OTHER MIDDLEWARE ==========
+// Request timing middleware - logs slow requests for monitoring
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (duration > 500) {
+      console.warn(`⚠️ Slow request: ${req.method} ${req.path} - ${duration}ms`);
+    }
+  });
+  next();
+});
+
 // Configure helmet to not interfere with CORS
 app.use(helmet({
   crossOriginResourcePolicy: false,

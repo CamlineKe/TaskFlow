@@ -30,6 +30,13 @@ const columnSchema = new Schema<IColumn>({
   timestamps: true,
 });
 
+// ========== INDEXES FOR PERFORMANCE ==========
+// Index for finding columns by board (used when populating board columns)
+columnSchema.index({ board: 1 });
+
+// Index for finding columns containing specific tasks
+columnSchema.index({ tasks: 1 });
+
 // 3. Create and export the Mongoose model.
 const Column = model<IColumn>('Column', columnSchema);
 

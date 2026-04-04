@@ -39,10 +39,10 @@ export const cacheKeys = {
 
 // Cache TTL in seconds - using environment variables with fallbacks
 export const CACHE_TTL = {
-  BOARD: Number(process.env.REDIS_TTL_BOARD) || 300, // 5 minutes default
-  PROJECT_DETAIL: Number(process.env.REDIS_TTL_PROJECT) || 600, // 10 minutes default
-  PROJECT_LIST: Number(process.env.REDIS_TTL_PROJECT_LIST) || 300, // 5 minutes default
-  TASK_LIST: Number(process.env.REDIS_TTL_TASKS) || 120, // 2 minutes default
+  BOARD: Number(process.env.REDIS_TTL_BOARD) || 900, // 15 minutes (static board structure)
+  PROJECT_DETAIL: Number(process.env.REDIS_TTL_PROJECT) || 600, // 10 minutes
+  PROJECT_LIST: Number(process.env.REDIS_TTL_PROJECT_LIST) || 300, // 5 minutes (frequently changes)
+  TASK_LIST: Number(process.env.REDIS_TTL_TASKS) || 120, // 2 minutes (tasks change often)
 };
 
 // Helper function to get cached data

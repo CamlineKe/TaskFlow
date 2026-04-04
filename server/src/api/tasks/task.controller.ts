@@ -84,7 +84,12 @@ export const getAllTasksController = async (req: Request, res: Response) => {
     const rawUserId = (req as any).user.id;
     const userId = new Types.ObjectId(rawUserId);
 
-    // Optimized: Single aggregation pipeline with field selection
+    // Pagination parameters
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const skip = (page - 1) * limit;
+
+    // Optimized: Single aggregation pipeline with field selection and pagination
     const tasks = await Task.aggregate([
       // First, get all projects the user has access to
       {
@@ -202,10 +207,54 @@ export const getAllTasksController = async (req: Request, res: Response) => {
       // Sort by creation date (newest first)
       {
         $sort: { createdAt: -1 }
+      },
+      // Pagination: skip and limit
+      {
+        $skip: skip
+      },
+      {
+        $limit: limit
       }
     ]);
 
-    res.status(200).json(tasks);
+    // Get total count for pagination metadata
+    const totalCountResult = await Task.aggregate([
+      {
+        $lookup: {
+          from: 'projects',
+          localField: 'project',
+          foreignField: '_id',
+          as: 'projectInfo',
+        },
+      },
+      {
+        $unwind: '$projectInfo',
+      },
+      {
+        $match: {
+          $or: [
+            { 'projectInfo.owner': userId },
+            { 'projectInfo.members': userId },
+          ],
+        },
+      },
+      {
+        $count: 'total'
+      }
+    ]);
+    const total = totalCountResult.length > 0 ? totalCountResult[0].total : 0;
+
+    res.status(200).json({
+      tasks,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page < Math.ceil(total / limit),
+        hasPrevPage: page > 1,
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ message: 'Server error getting tasks.', error: error.message });
   }
