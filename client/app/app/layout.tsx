@@ -19,7 +19,6 @@ import {
   CircularProgress,
   Avatar,
   Divider,
-  Badge,
   Breadcrumbs,
   Link,
 } from '@mui/material';
@@ -31,7 +30,6 @@ import {
   Settings as SettingsIcon,
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
-  Notifications as NotificationsIcon,
   Home as HomeIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/store/auth.store';
@@ -285,11 +283,6 @@ export default function AppLayout({
                   sx={{ mr: 1 }}
                 >
                   {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-                </IconButton>
-                <IconButton color="inherit">
-                  <Badge badgeContent={3} color="error">
-                    <NotificationsIcon />
-                  </Badge>
                 </IconButton>
               </Toolbar>
             </AppBar>
