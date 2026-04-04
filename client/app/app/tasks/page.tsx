@@ -79,7 +79,8 @@ const fetchTasks = async (): Promise<Task[]> => {
   console.log('🔍 Fetching tasks...');
   const { data } = await apiClient.get('/tasks');
   console.log('📥 Tasks API response:', data);
-  return data;
+  // Extract tasks from paginated response
+  return data.tasks || [];
 };
 
 // Animation variants
