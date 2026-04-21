@@ -21,7 +21,7 @@ export const ThemeContext = createContext<ThemeContextType>({
 
 // Custom hook that bridges next-themes with our context
 export const useThemeContext = (): ThemeContextType => {
-  const { theme, setTheme, resolvedTheme } = useNextTheme();
+  const { setTheme, resolvedTheme } = useNextTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -29,7 +29,8 @@ export const useThemeContext = (): ThemeContextType => {
   }, []);
 
   const toggleColorMode = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
+    const currentTheme = resolvedTheme || 'dark';
+    setTheme(currentTheme === 'dark' ? 'light' : 'dark');
   };
   
   return {

@@ -23,7 +23,7 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useThemeContext } from '@/context/ThemeContext';
 import Image from 'next/image';
 
@@ -52,11 +52,34 @@ const staggerChild = {
   visible: { opacity: 1, y: 0 },
 };
 
+const gradientBlobAnimation = {
+  animate: {
+    scale: [1, 1.2, 1],
+    rotate: [0, 90, 0],
+    transition: { duration: 20, repeat: Infinity, ease: "linear" },
+  },
+};
+
+const wordSwapVariants = {
+  enter: { opacity: 0, y: 20 },
+  center: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
 export default function LandingPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { mode, toggleColorMode, mounted } = useThemeContext();
+  const [currentWord, setCurrentWord] = useState(0);
+  const words = ['Clarity', 'Focus', 'Flow', 'Control'];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentWord((prev) => (prev + 1) % words.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
 
   // Don't render until mounted to prevent hydration mismatch
   if (!mounted) {
@@ -274,6 +297,42 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <Container maxWidth="lg" sx={{ px: { xs: 2, md: 3 }, position: 'relative', zIndex: 1 }}>
+        {/* Animated Gradient Blobs */}
+        <Box sx={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          <motion.div
+            variants={gradientBlobAnimation}
+            animate="animate"
+            style={{
+              position: 'absolute',
+              top: '10%',
+              left: '10%',
+              width: 400,
+              height: 400,
+              borderRadius: '50%',
+              background: mode === 'dark'
+                ? 'radial-gradient(circle, rgba(129, 140, 248, 0.3) 0%, transparent 70%)'
+                : 'radial-gradient(circle, rgba(129, 140, 248, 0.4) 0%, transparent 70%)',
+              filter: 'blur(60px)',
+            }}
+          />
+          <motion.div
+            variants={gradientBlobAnimation}
+            animate="animate"
+            style={{
+              position: 'absolute',
+              top: '30%',
+              right: '5%',
+              width: 300,
+              height: 300,
+              borderRadius: '50%',
+              background: mode === 'dark'
+                ? 'radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, transparent 70%)'
+                : 'radial-gradient(circle, rgba(168, 85, 247, 0.35) 0%, transparent 70%)',
+              filter: 'blur(50px)',
+            }}
+          />
+        </Box>
+
         <Box
           sx={{
             textAlign: 'center',
@@ -281,6 +340,49 @@ export default function LandingPage() {
             position: 'relative',
           }}
         >
+          {/* Social Proof Badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 2,
+                py: 1,
+                mb: 3,
+                borderRadius: 50,
+                background: mode === 'dark'
+                  ? 'rgba(255, 255, 255, 0.1)'
+                  : 'rgba(0, 0, 0, 0.05)',
+                border: mode === 'dark'
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : '1px solid rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              <Box sx={{ display: 'flex', ml: -0.5 }}>
+                {[1, 2, 3].map((i) => (
+                  <Avatar
+                    key={i}
+                    src={`https://i.pravatar.cc/150?u=user${i}`}
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      border: `2px solid ${mode === 'dark' ? '#0F172A' : '#F8FAFC'}`,
+                      ml: -0.5,
+                    }}
+                  />
+                ))}
+              </Box>
+              <Typography variant="caption" sx={{ fontWeight: 500, color: 'text.secondary' }}>
+                Join 50,000+ teams shipping faster
+              </Typography>
+            </Box>
+          </motion.div>
+
           <motion.div initial="hidden" animate="visible" variants={fadeIn}>
             <Typography
               variant={isMobile ? 'h3' : 'h1'}
@@ -293,7 +395,24 @@ export default function LandingPage() {
                 lineHeight: 1.2,
               }}
             >
-              Bring Clarity to Your Chaos
+              Bring{' '}
+              <Box component="span" sx={{ position: 'relative', display: 'inline-flex', overflow: 'hidden', height: { xs: '1.2em', md: '1.1em' }, verticalAlign: 'bottom' }}>
+                <motion.span
+                  key={currentWord}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  variants={wordSwapVariants}
+                  transition={{ duration: 0.5 }}
+                  style={{
+                    color: theme.palette.primary.main,
+                    display: 'inline-block',
+                  }}
+                >
+                  {words[currentWord]}
+                </motion.span>
+              </Box>
+              {' '}to Your Chaos
             </Typography>
             <Typography 
               variant={isMobile ? 'h6' : 'h4'} 
@@ -312,67 +431,112 @@ export default function LandingPage() {
             <Stack 
               direction={{ xs: 'column', sm: 'row' }} 
               spacing={2} 
-              sx={{ justifyContent: 'center', alignItems: 'center', mb: 6 }}
+              sx={{ justifyContent: 'center', alignItems: 'center', mb: 4 }}
             >
-              <Button
-                component={Link}
-                href="/register"
-                variant="contained"
-                color="primary"
-                size="large"
-                sx={{
-                  py: 2,
-                  px: 4,
-                  fontSize: '1.1rem',
-                  textTransform: 'none',
-                  borderRadius: 3,
-                  boxShadow: mode === 'dark'
-                    ? '0 8px 32px rgba(0, 0, 0, 0.4)'
-                    : '0 8px 32px rgba(0, 0, 0, 0.15)',
-                  '&:hover': {
-                    boxShadow: mode === 'dark'
-                      ? '0 12px 48px rgba(0, 0, 0, 0.5)'
-                      : '0 12px 48px rgba(0, 0, 0, 0.2)',
-                  },
-                }}
-              >
-                Get Started - It&apos;s Free
-              </Button>
-              <Button
-                component={Link}
-                href="/login"
-                variant="outlined"
-                color="inherit"
-                size="large"
-                sx={{
-                  py: 2,
-                  px: 4,
-                  fontSize: '1.1rem',
-                  textTransform: 'none',
-                  borderRadius: 3,
-                  borderColor: mode === 'dark'
-                    ? 'rgba(255, 255, 255, 0.3)'
-                    : 'rgba(0, 0, 0, 0.3)',
-                  '&:hover': {
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  component={Link}
+                  href="/register"
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  sx={{
+                    py: 2,
+                    px: 4,
+                    fontSize: '1.1rem',
+                    textTransform: 'none',
+                    borderRadius: 3,
+                    boxShadow: `0 8px 32px ${mode === 'dark' ? 'rgba(129, 140, 248, 0.4)' : 'rgba(129, 140, 248, 0.5)'}`,
+                    '&:hover': {
+                      boxShadow: `0 12px 48px ${mode === 'dark' ? 'rgba(129, 140, 248, 0.5)' : 'rgba(129, 140, 248, 0.6)'}`,
+                      background: 'primary.main',
+                    },
+                  }}
+                >
+                  Get Started - It&apos;s Free
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  component={Link}
+                  href="/login"
+                  variant="outlined"
+                  color="inherit"
+                  size="large"
+                  sx={{
+                    py: 2,
+                    px: 4,
+                    fontSize: '1.1rem',
+                    textTransform: 'none',
+                    borderRadius: 3,
                     borderColor: mode === 'dark'
-                      ? 'rgba(255, 255, 255, 0.5)'
-                      : 'rgba(0, 0, 0, 0.5)',
-                    background: mode === 'dark'
-                      ? 'rgba(255, 255, 255, 0.05)'
-                      : 'rgba(0, 0, 0, 0.05)',
-                  },
+                      ? 'rgba(255, 255, 255, 0.3)'
+                      : 'rgba(0, 0, 0, 0.3)',
+                    '&:hover': {
+                      borderColor: mode === 'dark'
+                        ? 'rgba(255, 255, 255, 0.5)'
+                        : 'rgba(0, 0, 0, 0.5)',
+                      background: mode === 'dark'
+                        ? 'rgba(255, 255, 255, 0.05)'
+                        : 'rgba(0, 0, 0, 0.05)',
+                    },
+                  }}
+                >
+                  Sign In
+                </Button>
+              </motion.div>
+            </Stack>
+
+            {/* Live Activity Ticker */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
+            >
+              <Box
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  px: 2.5,
+                  py: 1,
+                  mb: 6,
+                  borderRadius: 2,
+                  background: mode === 'dark'
+                    ? 'rgba(34, 197, 94, 0.1)'
+                    : 'rgba(34, 197, 94, 0.08)',
+                  border: mode === 'dark'
+                    ? '1px solid rgba(34, 197, 94, 0.2)'
+                    : '1px solid rgba(34, 197, 94, 0.15)',
                 }}
               >
-                Sign In
-              </Button>
-            </Stack>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: '#22c55e',
+                    animation: 'pulse 2s infinite',
+                    '@keyframes pulse': {
+                      '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                      '50%': { opacity: 0.5, transform: 'scale(1.2)' },
+                    },
+                  }}
+                />
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                  <strong>2,847</strong> tasks completed today by teams worldwide
+                </Typography>
+              </Box>
+            </motion.div>
+
           </motion.div>
 
-          {/* Dashboard Preview */}
+          {/* Dashboard Preview - Glassmorphism */}
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 60 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
+            transition={{ duration: 1, delay: 0.4 }}
+            whileHover={{ y: -5 }}
           >
             <Box
               sx={{
@@ -380,49 +544,67 @@ export default function LandingPage() {
                 maxWidth: '1000px',
                 mx: 'auto',
                 transform: isMobile ? 'none' : 'perspective(1000px) rotateX(5deg)',
-                transition: 'transform 0.3s ease',
+                transition: 'transform 0.4s ease',
                 '&:hover': {
-                  transform: isMobile ? 'none' : 'perspective(1000px) rotateX(0deg) scale(1.02)',
+                  transform: isMobile ? 'none' : 'perspective(1000px) rotateX(2deg) scale(1.01)',
                 },
               }}
             >
+              {/* Outer glow effect */}
               <Box
                 sx={{
                   position: 'absolute',
-                  inset: -1,
+                  inset: -2,
                   background: mode === 'dark'
-                    ? 'rgba(255, 255, 255, 0.03)'
-                    : 'rgba(0, 0, 0, 0.03)',
+                    ? 'linear-gradient(135deg, rgba(129, 140, 248, 0.3) 0%, rgba(168, 85, 247, 0.2) 100%)'
+                    : 'linear-gradient(135deg, rgba(129, 140, 248, 0.4) 0%, rgba(168, 85, 247, 0.3) 100%)',
                   borderRadius: 4,
-                  filter: 'blur(8px)',
+                  filter: 'blur(20px)',
+                  opacity: 0.6,
                 }}
               />
+              {/* Glassmorphism container */}
               <Box
                 sx={{
                   position: 'relative',
                   borderRadius: 3,
                   overflow: 'hidden',
+                  background: mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.05)'
+                    : 'rgba(255, 255, 255, 0.7)',
+                  backdropFilter: 'blur(20px)',
                   border: mode === 'dark'
-                    ? '1px solid rgba(255, 255, 255, 0.2)'
-                    : '1px solid rgba(0, 0, 0, 0.1)',
+                    ? '1px solid rgba(255, 255, 255, 0.15)'
+                    : '1px solid rgba(255, 255, 255, 0.8)',
                   boxShadow: mode === 'dark'
-                    ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-                    : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                    ? '0 25px 50px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                    : '0 25px 50px -12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 1)',
+                  padding: 1,
                 }}
               >
-                <Image
-                  src={dashboardImage}
-                  alt="TaskFlow Dashboard Preview"
-                  width={1000}
-                  height={600}
-                  style={{
-                    width: '100%',
-                    height: 'auto',
-                    display: 'block',
+                <Box
+                  sx={{
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    border: mode === 'dark'
+                      ? '1px solid rgba(255, 255, 255, 0.1)'
+                      : '1px solid rgba(0, 0, 0, 0.08)',
                   }}
-                  priority
-                  unoptimized
-                />
+                >
+                  <Image
+                    src={dashboardImage}
+                    alt="TaskFlow Dashboard Preview"
+                    width={1000}
+                    height={600}
+                    style={{
+                      width: '100%',
+                      height: 'auto',
+                      display: 'block',
+                    }}
+                    priority
+                    unoptimized
+                  />
+                </Box>
               </Box>
             </Box>
           </motion.div>
