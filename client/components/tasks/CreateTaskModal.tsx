@@ -196,14 +196,11 @@ export function CreateTaskModal({ open, onClose }: CreateTaskModalProps) {
             <Button
               type="submit"
               variant="contained"
+              color="primary"
               disabled={isSubmitting || mutation.isPending}
-              sx={{ 
+              sx={{
                 flex: 1,
                 py: 1.5,
-                background: 'linear-gradient(45deg, #818CF8 30%, #EC4899 90%)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #6366F1 30%, #DB2777 90%)',
-                },
               }}
             >
               {mutation.isPending ? 'Creating...' : 'Create Task'}
