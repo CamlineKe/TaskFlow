@@ -94,7 +94,7 @@ export default function LandingPage() {
     {
       title: 'Secure & Private',
       description: 'Enterprise-grade security with end-to-end encryption for your sensitive data.',
-      image: 'https://images.unsplash.com/photo-1633265486064-086b219458fd?w=400&q=80',
+      image: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=400&q=80',
       layout: 'half',
     },
     {
@@ -138,7 +138,7 @@ export default function LandingPage() {
     { name: 'Stripe', logo: 'https://cdn.simpleicons.org/stripe/gray' },
     { name: 'Notion', logo: 'https://cdn.simpleicons.org/notion/gray' },
     { name: 'Figma', logo: 'https://cdn.simpleicons.org/figma/gray' },
-    { name: 'Slack', logo: 'https://cdn.simpleicons.org/slack/gray' },
+    { name: 'Google Meet', logo: 'https://cdn.simpleicons.org/googlemeet/gray' },
   ];
 
   return (
