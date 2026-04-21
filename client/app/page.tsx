@@ -74,36 +74,47 @@ export default function LandingPage() {
     ? 'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=1000&q=80'
     : 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1000&q=80';
 
+  // Bento grid features - arranged for visual hierarchy
   const features = [
+    // Row 1: Full-width hero feature
     {
       title: 'Intuitive Dashboard',
-      description: 'Get a bird\'s eye view of all your projects and tasks in one beautiful dashboard.',
-      image: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400&q=80',
+      description: 'Get a bird\'s eye view of all your projects and tasks in one beautiful, customizable dashboard. Track progress at a glance.',
+      image: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=800&q=80',
+      layout: 'full',
     },
+    // Row 2: Two half-width features
     {
       title: 'Team Collaboration',
-      description: 'Work together seamlessly with real-time updates and shared project spaces.',
-      image: 'https://placehold.co/400x300/334155/ffffff?text=Collaboration&font=roboto',
+      description: 'Work together seamlessly with real-time updates and shared project spaces that keep everyone aligned.',
+      image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&q=80',
+      layout: 'half',
     },
     {
-      icon: <SpeedIcon sx={{ fontSize: 48, color: 'primary.main' }} />,
+      icon: <SpeedIcon sx={{ fontSize: 40, color: 'primary.main' }} />,
       title: 'Lightning Fast',
       description: 'Built for speed with modern technology stack for instant responsiveness.',
+      layout: 'half',
     },
+    // Row 3: Two half-width features (swapped - icon first for variety)
     {
-      icon: <SecurityIcon sx={{ fontSize: 48, color: 'primary.main' }} />,
+      icon: <SecurityIcon sx={{ fontSize: 40, color: 'primary.main' }} />,
       title: 'Secure & Private',
-      description: 'Your data is protected with enterprise-grade security and privacy.',
+      description: 'Enterprise-grade security with end-to-end encryption for your sensitive data.',
+      layout: 'half',
     },
     {
       title: 'Mobile First',
-      description: 'Optimized for mobile devices so you can manage tasks anywhere, anytime.',
+      description: 'Manage tasks anywhere with our fully-responsive mobile experience.',
       image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&q=80',
+      layout: 'half',
     },
+    // Row 4: Full-width closing feature
     {
       icon: <CheckCircleIcon sx={{ fontSize: 48, color: 'primary.main' }} />,
       title: 'Smart Organization',
-      description: 'Intelligent task organization with drag-and-drop functionality.',
+      description: 'Intelligent task organization with drag-and-drop functionality, smart tags, and automated workflows that adapt to how you work.',
+      layout: 'full',
     },
   ];
 
@@ -529,116 +540,139 @@ export default function LandingPage() {
               animate="visible"
             >
               <Grid container spacing={3}>
-                {features.map((feature, index) => (
-                  <Grid item xs={12} md={6} lg={4} key={index}>
-                    <motion.div variants={staggerChild}>
-                      <Card
-                        sx={{
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'row',
-                          background: mode === 'dark'
-                            ? 'rgba(255, 255, 255, 0.05)'
-                            : 'rgba(255, 255, 255, 0.8)',
-                          backdropFilter: 'blur(10px)',
-                          border: mode === 'dark'
-                            ? '1px solid rgba(255, 255, 255, 0.1)'
-                            : '1px solid rgba(0, 0, 0, 0.1)',
-                          borderRadius: 3,
-                          overflow: 'hidden',
-                          transition: 'all 0.3s ease',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: mode === 'dark'
-                              ? '0 20px 40px rgba(0, 0, 0, 0.3)'
-                              : '0 20px 40px rgba(0, 0, 0, 0.1)',
-                            border: '1px solid rgba(129, 140, 248, 0.3)',
-                          },
-                        }}
-                      >
-                        {/* Image Section - Left Side */}
-                        {feature.image ? (
-                          <Box
-                            sx={{
-                              position: 'relative',
-                              width: { xs: '120px', sm: '140px' },
-                              minWidth: { xs: '120px', sm: '140px' },
-                              background: mode === 'dark' ? '#1e293b' : '#f1f5f9',
-                            }}
-                          >
-                            <Image
-                              src={feature.image}
-                              alt={feature.title}
-                              fill
-                              sizes="140px"
-                              loading="lazy"
-                              style={{
-                                objectFit: 'cover',
-                              }}
-                              unoptimized
-                            />
-                          </Box>
-                        ) : (
-                          /* Icon Placeholder when no image */
-                          <Box
-                            sx={{
-                              width: { xs: '120px', sm: '140px' },
-                              minWidth: { xs: '120px', sm: '140px' },
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              background: mode === 'dark'
-                                ? 'rgba(255, 255, 255, 0.05)'
-                                : 'rgba(0, 0, 0, 0.03)',
-                            }}
-                          >
-                            <Box sx={{ transform: 'scale(1.5)' }}>
-                              {feature.icon}
-                            </Box>
-                          </Box>
-                        )}
-                        
-                        {/* Content Section - Right Side */}
-                        <CardContent 
-                          sx={{ 
-                            flex: 1,
-                            p: 3,
+                {features.map((feature, index) => {
+                  const isFullWidth = feature.layout === 'full';
+                  const isMobile = feature.layout === 'half';
+                  
+                  return (
+                    <Grid 
+                      item 
+                      xs={12} 
+                      md={isFullWidth ? 12 : 6} 
+                      key={index}
+                    >
+                      <motion.div variants={staggerChild}>
+                        <Card
+                          sx={{
+                            height: '100%',
                             display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                            '&:last-child': { pb: 3 },
+                            flexDirection: { 
+                              xs: 'column', 
+                              md: isFullWidth ? 'row' : 'column' 
+                            },
+                            background: mode === 'dark'
+                              ? 'rgba(255, 255, 255, 0.05)'
+                              : 'rgba(255, 255, 255, 0.8)',
+                            backdropFilter: 'blur(10px)',
+                            border: mode === 'dark'
+                              ? '1px solid rgba(255, 255, 255, 0.1)'
+                              : '1px solid rgba(0, 0, 0, 0.1)',
+                            borderRadius: 3,
+                            overflow: 'hidden',
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                              transform: 'translateY(-4px)',
+                              boxShadow: mode === 'dark'
+                                ? '0 20px 40px rgba(0, 0, 0, 0.3)'
+                                : '0 20px 40px rgba(0, 0, 0, 0.1)',
+                              border: '1px solid rgba(129, 140, 248, 0.3)',
+                            },
                           }}
                         >
-                          <Typography
-                            variant="h6"
-                            component="h3"
-                            gutterBottom
+                          {/* Visual Section - Image or Icon */}
+                          {feature.image ? (
+                            <Box
+                              sx={{
+                                position: 'relative',
+                                width: { 
+                                  xs: '100%', 
+                                  md: isFullWidth ? '45%' : '100%' 
+                                },
+                                height: { 
+                                  xs: isFullWidth ? 200 : 160, 
+                                  md: isFullWidth ? 280 : 180 
+                                },
+                                minWidth: { md: isFullWidth ? '45%' : 'auto' },
+                                background: mode === 'dark' ? '#1e293b' : '#f1f5f9',
+                                order: { md: isFullWidth && index === 4 ? 2 : 0 }, // Flip Mobile First image on desktop
+                              }}
+                            >
+                              <Image
+                                src={feature.image}
+                                alt={feature.title}
+                                fill
+                                sizes={isFullWidth ? '(max-width: 900px) 100vw, 45vw' : '(max-width: 900px) 100vw, 50vw'}
+                                loading="lazy"
+                                style={{
+                                  objectFit: 'cover',
+                                }}
+                                unoptimized
+                              />
+                            </Box>
+                          ) : (
+                            /* Icon Section */
+                            <Box
+                              sx={{
+                                width: { xs: '100%', md: isFullWidth ? '35%' : '100%' },
+                                height: { xs: 140, md: isFullWidth ? 'auto' : 140 },
+                                minHeight: { md: isFullWidth ? 200 : 140 },
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: mode === 'dark'
+                                  ? 'rgba(255, 255, 255, 0.05)'
+                                  : 'rgba(0, 0, 0, 0.03)',
+                                p: 3,
+                              }}
+                            >
+                              <Box sx={{ transform: 'scale(1.2)' }}>
+                                {feature.icon}
+                              </Box>
+                            </Box>
+                          )}
+                          
+                          {/* Content Section */}
+                          <CardContent 
                             sx={{ 
-                              fontWeight: 600, 
-                              color: mode === 'dark' ? 'white' : 'text.primary',
-                              mb: 1,
+                              flex: 1,
+                              p: { xs: 2.5, md: isFullWidth ? 4 : 3 },
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              '&:last-child': { pb: { xs: 2.5, md: isFullWidth ? 4 : 3 } },
                             }}
                           >
-                            {feature.title}
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            color={mode === 'dark' 
-                              ? 'rgba(255, 255, 255, 0.7)'
-                              : 'rgba(0, 0, 0, 0.7)'
-                            }
-                            sx={{ 
-                              lineHeight: 1.6,
-                              fontSize: '0.9rem',
-                            }}
-                          >
-                            {feature.description}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  </Grid>
-                ))}
+                            <Typography
+                              variant={isFullWidth ? 'h5' : 'h6'}
+                              component="h3"
+                              gutterBottom
+                              sx={{ 
+                                fontWeight: 600, 
+                                color: mode === 'dark' ? 'white' : 'text.primary',
+                                mb: 1.5,
+                              }}
+                            >
+                              {feature.title}
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              color={mode === 'dark' 
+                                ? 'rgba(255, 255, 255, 0.8)'
+                                : 'rgba(0, 0, 0, 0.7)'
+                              }
+                              sx={{ 
+                                lineHeight: 1.7,
+                                fontSize: isFullWidth ? '1rem' : '0.95rem',
+                              }}
+                            >
+                              {feature.description}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </Grid>
+                  );
+                })}
               </Grid>
             </motion.div>
           </Box>
