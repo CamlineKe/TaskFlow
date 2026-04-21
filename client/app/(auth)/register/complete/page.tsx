@@ -126,7 +126,7 @@ export default function CompleteRegistrationPage() {
       <Box
         sx={{
           minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
+          background: '#0F172A',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -142,7 +142,7 @@ export default function CompleteRegistrationPage() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
+        background: '#0F172A',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -197,8 +197,8 @@ export default function CompleteRegistrationPage() {
                     height: 80,
                     borderRadius: '50%',
                     background: isCompleted 
-                      ? 'linear-gradient(45deg, #10B981 30%, #059669 90%)'
-                      : 'linear-gradient(45deg, #818CF8 30%, #EC4899 90%)',
+                      ? 'success.main'
+                      : 'primary.main',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -215,11 +215,9 @@ export default function CompleteRegistrationPage() {
               gutterBottom
               sx={{
                 fontWeight: 700,
-                background: isCompleted 
-                  ? 'linear-gradient(45deg, #10B981 30%, #059669 90%)'
-                  : 'linear-gradient(45deg, #818CF8 30%, #EC4899 90%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: isCompleted 
+                  ? 'success.main'
+                  : 'white',
                 mb: 1,
               }}
             >
@@ -262,8 +260,8 @@ export default function CompleteRegistrationPage() {
                     sx={{
                       width: 32,
                       height: 32,
-                      border: '3px solid rgba(129, 140, 248, 0.3)',
-                      borderTop: '3px solid #818CF8',
+                      border: '3px solid rgba(255, 255, 255, 0.1)',
+                      borderTop: '3px solid white',
                       borderRadius: '50%',
                       animation: 'spin 1s linear infinite',
                       margin: '0 auto',
@@ -290,9 +288,9 @@ export default function CompleteRegistrationPage() {
                     fontWeight: 600,
                     textTransform: 'none',
                     borderRadius: 2,
-                    boxShadow: '0 8px 32px rgba(129, 140, 248, 0.3)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
                     '&:hover': {
-                      boxShadow: '0 12px 48px rgba(129, 140, 248, 0.4)',
+                      boxShadow: '0 12px 48px rgba(0, 0, 0, 0.5)',
                     },
                   }}
                 >

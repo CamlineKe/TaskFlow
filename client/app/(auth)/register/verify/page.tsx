@@ -131,7 +131,7 @@ function VerifyEmailContent() {
       <Box
         sx={{
           minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
+          background: '#0F172A',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -147,7 +147,7 @@ function VerifyEmailContent() {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
+        background: '#0F172A',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -200,7 +200,7 @@ function VerifyEmailContent() {
                   width: 64,
                   height: 64,
                   borderRadius: '50%',
-                  background: 'linear-gradient(45deg, #818CF8 30%, #EC4899 90%)',
+                  background: 'primary.main',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -216,9 +216,7 @@ function VerifyEmailContent() {
               gutterBottom
               sx={{
                 fontWeight: 700,
-                background: 'linear-gradient(45deg, #818CF8 30%, #EC4899 90%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: 'white',
                 mb: 1,
               }}
             >
@@ -318,12 +316,12 @@ function VerifyEmailContent() {
                     fontWeight: 600,
                     textTransform: 'none',
                     borderRadius: 2,
-                    boxShadow: '0 8px 32px rgba(129, 140, 248, 0.3)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
                     '&:hover': {
-                      boxShadow: '0 12px 48px rgba(129, 140, 248, 0.4)',
+                      boxShadow: '0 12px 48px rgba(0, 0, 0, 0.5)',
                     },
                     '&:disabled': {
-                      backgroundColor: 'rgba(129, 140, 248, 0.3)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
                     },
                   }}
                 >
@@ -372,7 +370,7 @@ export default function VerifyEmailPage() {
       <Box
         sx={{
           minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%)',
+          background: '#0F172A',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
