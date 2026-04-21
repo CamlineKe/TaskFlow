@@ -319,7 +319,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                       bgcolor: 'grey.200',
                       '& .MuiLinearProgress-bar': {
                         borderRadius: 4,
-                        background: 'linear-gradient(45deg, #818CF8 30%, #EC4899 90%)',
+                        bgcolor: 'primary.main',
                       },
                     }}
                   />
