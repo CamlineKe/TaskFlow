@@ -15,17 +15,11 @@ import {
   Avatar,
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
-  GroupWork as GroupWorkIcon,
-  Speed as SpeedIcon,
-  Security as SecurityIcon,
-  PhoneAndroid as MobileIcon,
-  CheckCircle as CheckCircleIcon,
   Menu as MenuIcon,
   Brightness4 as Brightness4Icon,
   Brightness7 as Brightness7Icon,
-  Star as StarIcon,
   FormatQuote as QuoteIcon,
+  Star as StarIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -91,16 +85,16 @@ export default function LandingPage() {
       layout: 'half',
     },
     {
-      icon: <SpeedIcon sx={{ fontSize: 40, color: 'primary.main' }} />,
       title: 'Lightning Fast',
       description: 'Built for speed with modern technology stack for instant responsiveness.',
+      image: 'https://images.unsplash.com/photo-1517976487492-5750f3195933?w=400&q=80',
       layout: 'half',
     },
     // Row 3: Two half-width features (swapped - icon first for variety)
     {
-      icon: <SecurityIcon sx={{ fontSize: 40, color: 'primary.main' }} />,
       title: 'Secure & Private',
       description: 'Enterprise-grade security with end-to-end encryption for your sensitive data.',
+      image: 'https://images.unsplash.com/photo-1633265486064-086b219458fd?w=400&q=80',
       layout: 'half',
     },
     {
@@ -111,9 +105,9 @@ export default function LandingPage() {
     },
     // Row 4: Full-width closing feature
     {
-      icon: <CheckCircleIcon sx={{ fontSize: 48, color: 'primary.main' }} />,
       title: 'Smart Organization',
       description: 'Intelligent task organization with drag-and-drop functionality, smart tags, and automated workflows that adapt to how you work.',
+      image: 'https://images.unsplash.com/photo-1542626991-cbc4e32524cc?w=800&q=80',
       layout: 'full',
     },
   ];
@@ -579,57 +573,35 @@ export default function LandingPage() {
                             },
                           }}
                         >
-                          {/* Visual Section - Image or Icon */}
-                          {feature.image ? (
-                            <Box
-                              sx={{
-                                position: 'relative',
-                                width: { 
-                                  xs: '100%', 
-                                  md: isFullWidth ? '45%' : '100%' 
-                                },
-                                height: { 
-                                  xs: isFullWidth ? 200 : 160, 
-                                  md: isFullWidth ? 280 : 180 
-                                },
-                                minWidth: { md: isFullWidth ? '45%' : 'auto' },
-                                background: mode === 'dark' ? '#1e293b' : '#f1f5f9',
-                                order: { md: isFullWidth && index === 4 ? 2 : 0 }, // Flip Mobile First image on desktop
+                          {/* Visual Section - Image */}
+                          <Box
+                            sx={{
+                              position: 'relative',
+                              width: { 
+                                xs: '100%', 
+                                md: isFullWidth ? '45%' : '100%' 
+                              },
+                              height: { 
+                                xs: isFullWidth ? 200 : 160, 
+                                md: isFullWidth ? 280 : 180 
+                              },
+                              minWidth: { md: isFullWidth ? '45%' : 'auto' },
+                              background: mode === 'dark' ? '#1e293b' : '#f1f5f9',
+                              order: { md: isFullWidth && index === 4 ? 2 : 0 }, // Flip Mobile First image on desktop
+                            }}
+                          >
+                            <Image
+                              src={feature.image}
+                              alt={feature.title}
+                              fill
+                              sizes={isFullWidth ? '(max-width: 900px) 100vw, 45vw' : '(max-width: 900px) 100vw, 50vw'}
+                              loading="lazy"
+                              style={{
+                                objectFit: 'cover',
                               }}
-                            >
-                              <Image
-                                src={feature.image}
-                                alt={feature.title}
-                                fill
-                                sizes={isFullWidth ? '(max-width: 900px) 100vw, 45vw' : '(max-width: 900px) 100vw, 50vw'}
-                                loading="lazy"
-                                style={{
-                                  objectFit: 'cover',
-                                }}
-                                unoptimized
-                              />
-                            </Box>
-                          ) : (
-                            /* Icon Section */
-                            <Box
-                              sx={{
-                                width: { xs: '100%', md: isFullWidth ? '35%' : '100%' },
-                                height: { xs: 140, md: isFullWidth ? 'auto' : 140 },
-                                minHeight: { md: isFullWidth ? 200 : 140 },
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: mode === 'dark'
-                                  ? 'rgba(255, 255, 255, 0.05)'
-                                  : 'rgba(0, 0, 0, 0.03)',
-                                p: 3,
-                              }}
-                            >
-                              <Box sx={{ transform: 'scale(1.2)' }}>
-                                {feature.icon}
-                              </Box>
-                            </Box>
-                          )}
+                              unoptimized
+                            />
+                          </Box>
                           
                           {/* Content Section */}
                           <CardContent 
