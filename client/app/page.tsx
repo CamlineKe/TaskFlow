@@ -141,39 +141,12 @@ export default function LandingPage() {
       sx={{
         minHeight: '100vh',
         background: mode === 'dark' 
-          ? 'linear-gradient(180deg, #0F172A 0%, #1E293B 50%, #334155 100%)'
-          : 'linear-gradient(180deg, #F8FAFC 0%, #E2E8F0 50%, #CBD5E1 100%)',
+          ? '#0F172A'
+          : '#F8FAFC',
         color: mode === 'dark' ? 'white' : 'text.primary',
         overflow: 'hidden',
       }}
     >
-      {/* Decorative floating elements */}
-      <Box
-        sx={{
-          position: 'fixed',
-          top: '10%',
-          left: '-5%',
-          width: '300px',
-          height: '300px',
-          background: 'radial-gradient(circle, rgba(129, 140, 248, 0.15) 0%, transparent 70%)',
-          borderRadius: '50%',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-      <Box
-        sx={{
-          position: 'fixed',
-          bottom: '20%',
-          right: '-10%',
-          width: '400px',
-          height: '400px',
-          background: 'radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, transparent 70%)',
-          borderRadius: '50%',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
 
       {/* Header */}
       <Box
@@ -192,9 +165,7 @@ export default function LandingPage() {
           component="div"
           sx={{
             fontWeight: 700,
-            background: 'linear-gradient(45deg, #818CF8 30%, #EC4899 90%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: 'primary.main',
           }}
         >
           TaskFlow
@@ -312,9 +283,7 @@ export default function LandingPage() {
               gutterBottom
               sx={{
                 fontWeight: 800,
-                background: 'linear-gradient(45deg, #818CF8 30%, #EC4899 70%, #F59E0B 90%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: 'text.primary',
                 mb: 3,
                 lineHeight: 1.2,
               }}
@@ -352,9 +321,13 @@ export default function LandingPage() {
                   fontSize: '1.1rem',
                   textTransform: 'none',
                   borderRadius: 3,
-                  boxShadow: '0 8px 32px rgba(129, 140, 248, 0.3)',
+                  boxShadow: mode === 'dark'
+                    ? '0 8px 32px rgba(0, 0, 0, 0.4)'
+                    : '0 8px 32px rgba(0, 0, 0, 0.15)',
                   '&:hover': {
-                    boxShadow: '0 12px 48px rgba(129, 140, 248, 0.4)',
+                    boxShadow: mode === 'dark'
+                      ? '0 12px 48px rgba(0, 0, 0, 0.5)'
+                      : '0 12px 48px rgba(0, 0, 0, 0.2)',
                   },
                 }}
               >
@@ -411,11 +384,12 @@ export default function LandingPage() {
               <Box
                 sx={{
                   position: 'absolute',
-                  inset: -2,
-                  background: 'linear-gradient(45deg, #818CF8, #EC4899)',
+                  inset: -1,
+                  background: mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.03)'
+                    : 'rgba(0, 0, 0, 0.03)',
                   borderRadius: 4,
-                  opacity: 0.5,
-                  filter: 'blur(20px)',
+                  filter: 'blur(8px)',
                 }}
               />
               <Box
@@ -610,9 +584,9 @@ export default function LandingPage() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              background: mode === 'dark' 
-                                ? 'linear-gradient(135deg, rgba(129, 140, 248, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)'
-                                : 'linear-gradient(135deg, rgba(129, 140, 248, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)',
+                              background: mode === 'dark'
+                                ? 'rgba(255, 255, 255, 0.05)'
+                                : 'rgba(0, 0, 0, 0.03)',
                             }}
                           >
                             <Box sx={{ transform: 'scale(1.5)' }}>
@@ -803,9 +777,7 @@ export default function LandingPage() {
                       variant="h3"
                       sx={{
                         fontWeight: 800,
-                        background: 'linear-gradient(45deg, #818CF8, #EC4899)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
+                        color: 'primary.main',
                       }}
                     >
                       {stat.value}
@@ -834,8 +806,8 @@ export default function LandingPage() {
               textAlign: 'center',
               py: { xs: 6, md: 10 },
               background: mode === 'dark'
-                ? 'linear-gradient(135deg, rgba(129, 140, 248, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)'
-                : 'linear-gradient(135deg, rgba(129, 140, 248, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)',
+                ? 'rgba(255, 255, 255, 0.03)'
+                : 'rgba(0, 0, 0, 0.02)',
               borderRadius: 4,
               border: mode === 'dark'
                 ? '1px solid rgba(255, 255, 255, 0.1)'
