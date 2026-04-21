@@ -208,9 +208,9 @@ export default function DashboardPage() {
         <motion.div variants={staggerChild}>
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={6} md={3}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
+              <Card sx={{
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
                 transition: 'transform 0.2s ease',
                 '&:hover': { transform: 'translateY(-4px)' }
               }}>
@@ -231,9 +231,9 @@ export default function DashboardPage() {
             </Grid>
             
             <Grid item xs={6} md={3}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                color: 'white',
+              <Card sx={{
+                bgcolor: 'success.main',
+                color: 'success.contrastText',
                 transition: 'transform 0.2s ease',
                 '&:hover': { transform: 'translateY(-4px)' }
               }}>
@@ -254,9 +254,9 @@ export default function DashboardPage() {
             </Grid>
             
             <Grid item xs={6} md={3}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                color: 'white',
+              <Card sx={{
+                bgcolor: 'warning.main',
+                color: 'warning.contrastText',
                 transition: 'transform 0.2s ease',
                 '&:hover': { transform: 'translateY(-4px)' }
               }}>
@@ -277,9 +277,9 @@ export default function DashboardPage() {
             </Grid>
             
             <Grid item xs={6} md={3}>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-                color: 'white',
+              <Card sx={{
+                bgcolor: 'info.main',
+                color: 'info.contrastText',
                 transition: 'transform 0.2s ease',
                 '&:hover': { transform: 'translateY(-4px)' }
               }}>

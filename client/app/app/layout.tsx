@@ -100,9 +100,7 @@ function DrawerContent({ mode, toggleColorMode }: { mode: 'light' | 'dark'; togg
           variant="h5"
           sx={{
             fontWeight: 700,
-            background: 'linear-gradient(45deg, #818CF8 30%, #EC4899 90%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: 'primary.main',
             mb: 2,
           }}
         >
