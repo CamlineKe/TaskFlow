@@ -69,16 +69,16 @@ export default function LandingPage() {
     return null;
   }
 
-  // Online placeholder URLs
+  // Unsplash real images
   const dashboardImage = mode === 'dark' 
-    ? 'https://placehold.co/1000x600/1e293b/818CF8?text=TaskFlow+Dashboard+Dark+Mode&font=roboto'
-    : 'https://placehold.co/1000x600/f8fafc/4f46e5?text=TaskFlow+Dashboard+Light+Mode&font=roboto';
+    ? 'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=1000&q=80'
+    : 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1000&q=80';
 
   const features = [
     {
       title: 'Intuitive Dashboard',
       description: 'Get a bird\'s eye view of all your projects and tasks in one beautiful dashboard.',
-      image: 'https://placehold.co/400x300/1e293b/ffffff?text=Dashboard&font=roboto',
+      image: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=400&q=80',
     },
     {
       title: 'Team Collaboration',
@@ -98,7 +98,7 @@ export default function LandingPage() {
     {
       title: 'Mobile First',
       description: 'Optimized for mobile devices so you can manage tasks anywhere, anytime.',
-      image: 'https://placehold.co/400x300/0f172a/ffffff?text=Mobile&font=roboto',
+      image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&q=80',
     },
     {
       icon: <CheckCircleIcon sx={{ fontSize: 48, color: 'primary.main' }} />,
@@ -480,6 +480,7 @@ export default function LandingPage() {
                     alt={company.name}
                     width={100}
                     height={30}
+                    loading="lazy"
                     style={{ objectFit: 'contain' }}
                     unoptimized
                   />
@@ -569,6 +570,8 @@ export default function LandingPage() {
                               src={feature.image}
                               alt={feature.title}
                               fill
+                              sizes="140px"
+                              loading="lazy"
                               style={{
                                 objectFit: 'cover',
                               }}
