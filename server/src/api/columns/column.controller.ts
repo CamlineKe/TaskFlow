@@ -2,6 +2,26 @@ import { Request, Response } from 'express';
 import Column from '../../models/column.model';
 import Task from '../../models/task.model';
 import { MoveTaskInput } from './column.validation';
+import { invalidateProjectCaches } from '../../config/redis';
+import {
+  getProjectParticipantIds,
+  objectIdToString,
+  userCanAccessProject,
+} from '../../utils/access.util';
+
+const getStatusFromColumnTitle = (title: string) => {
+  const normalizedTitle = title.toLowerCase();
+
+  if (normalizedTitle.includes('done') || normalizedTitle.includes('complete')) {
+    return 'completed';
+  }
+
+  if (normalizedTitle.includes('progress') || normalizedTitle.includes('doing')) {
+    return 'in-progress';
+  }
+
+  return 'todo';
+};
 
 export const moveTaskController = async (
   req: Request<{}, {}, MoveTaskInput>,
@@ -9,16 +29,50 @@ export const moveTaskController = async (
 ) => {
   try {
     const { taskId, sourceColumnId, destinationColumnId, destinationIndex } = req.body;
+    const userId = (req as any).user.id;
+
+    const task = await Task.findById(taskId)
+      .select('project column')
+      .populate({
+        path: 'project',
+        select: 'owner members board',
+      })
+      .lean();
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const project = task.project as any;
+    if (!userCanAccessProject(project, userId)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    if (objectIdToString(task.column) !== sourceColumnId) {
+      return res.status(400).json({ message: 'Source column does not match the task current column' });
+    }
+
+    const requestedColumnIds = [...new Set([sourceColumnId, destinationColumnId])];
+    const columns = await Column.find({
+      _id: { $in: requestedColumnIds },
+      board: project.board,
+    });
+
+    if (columns.length !== requestedColumnIds.length) {
+      return res.status(400).json({ message: 'Source and destination columns must belong to this project' });
+    }
+
+    const sourceColumn = columns.find((column) => objectIdToString(column._id) === sourceColumnId);
+    const destinationColumn = columns.find((column) => objectIdToString(column._id) === destinationColumnId);
+
+    if (!sourceColumn || !destinationColumn) {
+      return res.status(400).json({ message: 'Invalid source or destination column' });
+    }
 
     // Case 1: Moving within the same column (reordering)
     if (sourceColumnId === destinationColumnId) {
-      const column = await Column.findById(sourceColumnId);
-      if (!column) {
-        return res.status(404).json({ message: 'Column not found' });
-      }
-
       // --- FIX: Convert ObjectIDs to strings for comparison ---
-      const taskIndex = column.tasks.findIndex(id => id.toString() === taskId);
+      const taskIndex = sourceColumn.tasks.findIndex(id => id.toString() === taskId);
 
       // Handle case where task is not found in the column
       if (taskIndex === -1) {
@@ -26,13 +80,13 @@ export const moveTaskController = async (
       }
 
       // Remove the task from its original position
-      const [movedTask] = column.tasks.splice(taskIndex, 1);
+      const [movedTask] = sourceColumn.tasks.splice(taskIndex, 1);
 
       // Insert the task into its new position
-      column.tasks.splice(destinationIndex, 0, movedTask);
+      sourceColumn.tasks.splice(destinationIndex, 0, movedTask);
 
-      await column.save();
-    } 
+      await sourceColumn.save();
+    }
     // Case 2: Moving to a different column
     else {
       // Remove task ID from the source column's tasks array
@@ -53,11 +107,14 @@ export const moveTaskController = async (
       // Update the task's own 'column' field to point to the new column
       const taskUpdate = Task.findByIdAndUpdate(taskId, {
         column: destinationColumnId,
+        status: getStatusFromColumnTitle(destinationColumn.title),
       });
 
       // Run all database updates in parallel for efficiency
       await Promise.all([sourceUpdate, destinationUpdate, taskUpdate]);
     }
+
+    await invalidateProjectCaches(objectIdToString(project._id), getProjectParticipantIds(project));
 
     res.status(200).json({ message: 'Task moved successfully' });
   } catch (error: any) {

@@ -4,6 +4,12 @@ import Task from '../../models/task.model';
 import Column from '../../models/column.model';
 import { CreateTaskInput, UpdateTaskInput, UpdateTaskStatusInput } from './task.validation';
 import { invalidateProjectCaches } from '../../config/redis';
+import {
+  getAuthorizedProject,
+  getProjectParticipantIds,
+  objectIdToString,
+  userCanAccessProject,
+} from '../../utils/access.util';
 
 // --- Controller to get a single task ---
 export const getTaskController = async (req: Request, res: Response) => {
@@ -35,7 +41,7 @@ export const getTaskController = async (req: Request, res: Response) => {
 
     // Check if user has access to this task
     const project = task.project as any;
-    if (project && !project.owner.equals(userId) && !project.members.includes(userId)) {
+    if (!userCanAccessProject(project, userId)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -267,18 +273,23 @@ export const createTaskController = async (
 ) => {
   try {
     const { title, description, priority, projectId, columnId } = req.body;
+    const userId = (req as any).user.id;
 
-    // Optimized: Use Promise.all for parallel operations
-    const [column, newTask] = await Promise.all([
-      Column.findById(columnId).select('title').lean(),
-      Task.create({
-        title,
-        description,
-        priority: priority || 'medium',
-        project: projectId,
-        column: columnId,
-      }),
-    ]);
+    const project = await getAuthorizedProject(projectId, userId, '_id owner members board');
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    const column = await Column.findOne({
+      _id: columnId,
+      board: (project as any).board,
+    })
+      .select('title')
+      .lean();
+
+    if (!column) {
+      return res.status(400).json({ message: 'Column does not belong to this project' });
+    }
 
     // Determine status based on column title
     let status = 'todo';
@@ -297,16 +308,21 @@ export const createTaskController = async (
       }
     }
 
-    // Update task with status and add to column in parallel
-    await Promise.all([
-      Task.findByIdAndUpdate(newTask._id, { status }),
-      Column.findByIdAndUpdate(columnId, {
-        $push: { tasks: newTask._id },
-      }),
-    ]);
+    const newTask = await Task.create({
+      title,
+      description,
+      priority: priority || 'medium',
+      project: projectId,
+      column: columnId,
+      status,
+    });
+
+    await Column.findByIdAndUpdate(columnId, {
+      $push: { tasks: newTask._id },
+    });
 
     // Invalidate project caches to show the new task
-    await invalidateProjectCaches(projectId, (req as any).user.id);
+    await invalidateProjectCaches(projectId, getProjectParticipantIds(project));
 
     // Return minimal task data
     res.status(201).json({
@@ -333,6 +349,24 @@ export const updateTaskController = async (
   try {
     const { taskId } = req.params;
     const updateData = req.body;
+    const userId = (req as any).user.id;
+
+    const task = await Task.findById(taskId)
+      .select('project')
+      .populate({
+        path: 'project',
+        select: 'owner members',
+      })
+      .lean();
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const project = task.project as any;
+    if (!userCanAccessProject(project, userId)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
 
     const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, {
       new: true,
@@ -359,6 +393,8 @@ export const updateTaskController = async (
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    await invalidateProjectCaches(objectIdToString(project._id), getProjectParticipantIds(project));
+
     res.status(200).json(updatedTask);
   } catch (error: any) {
     res.status(500).json({ message: 'Server error updating task.', error: error.message });
@@ -374,7 +410,6 @@ export const updateTaskStatusController = async (
     const { taskId } = req.params;
     const { status } = req.body;
     const rawUserId = (req as any).user.id;
-    const userId = new Types.ObjectId(rawUserId);
     const taskObjectId = new Types.ObjectId(taskId);
 
     // Optimized: Single aggregation with field selection
@@ -415,7 +450,7 @@ export const updateTaskStatusController = async (
           ],
         },
       },
-      { $project: { column: 1, 'projectInfo.owner': 1, 'projectInfo.members': 1, columnsInfo: 1 } }
+      { $project: { status: 1, column: 1, 'projectInfo._id': 1, 'projectInfo.owner': 1, 'projectInfo.members': 1, columnsInfo: 1 } }
     ]);
 
     if (!taskWithInfo.length) {
@@ -426,7 +461,7 @@ export const updateTaskStatusController = async (
     const project = task.projectInfo;
 
     // Check if user has access to this task
-    if (!project.owner.equals(userId) && !project.members.includes(userId)) {
+    if (!userCanAccessProject(project, rawUserId)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -463,6 +498,11 @@ export const updateTaskStatusController = async (
 
     // If task is already in the target column, no need to move
     if (task.column.toString() === targetColumn._id.toString()) {
+      if (task.status !== status) {
+        await Task.findByIdAndUpdate(taskId, { status });
+        await invalidateProjectCaches(objectIdToString(project._id), getProjectParticipantIds(project));
+      }
+
       return res.status(200).json({
         message: 'Task is already in the target status',
         task: { _id: taskId, status, completed: status === 'completed' },
@@ -484,10 +524,7 @@ export const updateTaskStatusController = async (
     ]);
 
     // Invalidate project caches
-    const taskDetails = await Task.findById(taskId).select('project').lean();
-    if (taskDetails) {
-      await invalidateProjectCaches((taskDetails.project as any).toString(), rawUserId);
-    }
+    await invalidateProjectCaches(objectIdToString(project._id), getProjectParticipantIds(project));
 
     // Return minimal success response
     res.status(200).json({
@@ -503,18 +540,33 @@ export const updateTaskStatusController = async (
 export const deleteTaskController = async (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
+    const userId = (req as any).user.id;
 
-    // Optimized: Find and delete in one operation
-    const deletedTask = await Task.findByIdAndDelete(taskId).select('column').lean();
+    const task = await Task.findById(taskId)
+      .select('column project')
+      .populate({
+        path: 'project',
+        select: 'owner members',
+      })
+      .lean();
 
-    if (!deletedTask) {
+    if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Remove task from column (fire and forget)
-    Column.findByIdAndUpdate(deletedTask.column, {
-      $pull: { tasks: deletedTask._id },
-    }).exec();
+    const project = task.project as any;
+    if (!userCanAccessProject(project, userId)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    await Promise.all([
+      Task.findByIdAndDelete(taskId),
+      Column.findByIdAndUpdate(task.column, {
+        $pull: { tasks: task._id },
+      }),
+    ]);
+
+    await invalidateProjectCaches(objectIdToString(project._id), getProjectParticipantIds(project));
 
     res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error: any) {

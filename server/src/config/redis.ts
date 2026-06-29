@@ -35,6 +35,7 @@ export const cacheKeys = {
   projectDetail: (projectId: string) => `project:detail:${projectId}`,
   userProjects: (userId: string) => `user:projects:${userId}`,
   userTasks: (userId: string) => `user:tasks:${userId}`,
+  dashboardStats: (userId: string) => `dashboard:stats:${userId}`,
 };
 
 // Cache TTL in seconds - using environment variables with fallbacks
@@ -92,14 +93,22 @@ export const invalidateCache = async (_pattern: string): Promise<void> => {
 };
 
 // Helper function to invalidate project-related caches
-export const invalidateProjectCaches = async (projectId: string, userId: string): Promise<void> => {
+export const invalidateProjectCaches = async (
+  projectId: string,
+  userIds: string | string[]
+): Promise<void> => {
   try {
     const client = getRedisClient();
+    const uniqueUserIds = [...new Set(Array.isArray(userIds) ? userIds : [userIds])];
     
     await Promise.all([
       client.del(cacheKeys.projectBoard(projectId)),
       client.del(cacheKeys.projectDetail(projectId)),
-      client.del(cacheKeys.userProjects(userId)),
+      ...uniqueUserIds.flatMap((userId) => [
+        client.del(cacheKeys.userProjects(userId)),
+        client.del(cacheKeys.userTasks(userId)),
+        client.del(cacheKeys.dashboardStats(userId)),
+      ]),
     ]);
   } catch {
     // Silently fail - cache errors shouldn't break the app

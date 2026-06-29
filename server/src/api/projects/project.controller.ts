@@ -6,12 +6,13 @@ import Board, { IBoard } from '../../models/board.model';
 import Column from '../../models/column.model';
 import { CreateProjectInput, UpdateProjectInput, DeleteProjectInput } from './project.validation';
 import { cacheKeys, CACHE_TTL, getCachedData, setCachedData, invalidateProjectCaches } from '../../config/redis';
+import { getAuthorizedProject, getProjectParticipantIds, objectIdEquals } from '../../utils/access.util';
 
 // --- Controller to get dashboard stats (optimized single endpoint) ---
 export const getDashboardStatsController = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const cacheKey = `dashboard:stats:${userId}`;
+    const cacheKey = cacheKeys.dashboardStats(userId);
 
     // Try to get from cache first
     const cachedStats = await getCachedData<any>(cacheKey);
@@ -297,6 +298,11 @@ export const getProjectController = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid Project ID' });
     }
 
+    const authorizedProject = await getAuthorizedProject(projectId, userId, '_id');
+    if (!authorizedProject) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
     // Try to get from cache first
     const cachedProject = await getCachedData<any>(cacheKey);
     if (cachedProject) {
@@ -388,10 +394,16 @@ export const getProjectController = async (req: Request, res: Response) => {
 export const getProjectBoardController = async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
+    const userId = (req as any).user.id;
     const cacheKey = cacheKeys.projectBoard(projectId);
 
     if (!isValidObjectId(projectId)) {
       return res.status(400).json({ message: 'Invalid Project ID' });
+    }
+
+    const authorizedProject = await getAuthorizedProject(projectId, userId, '_id');
+    if (!authorizedProject) {
+      return res.status(404).json({ message: 'Project not found' });
     }
 
     // Try to get from cache first
@@ -404,7 +416,10 @@ export const getProjectBoardController = async (req: Request, res: Response) => 
     console.log('📦 Cache miss - fetching board from DB for project:', projectId);
 
     // Optimized: Select only needed fields for board view
-    const project = await Project.findById(projectId)
+    const project = await Project.findOne({
+      _id: projectId,
+      $or: [{ owner: userId }, { members: userId }],
+    })
       .select('name board')
       .populate({
         path: 'board',
@@ -522,13 +537,13 @@ export const updateProjectController = async (
     const userId = (req as any).user.id;
 
     // Check if the project exists and user has permission to update it
-    const project = await Project.findById(projectId).select('owner').lean();
+    const project = await Project.findById(projectId).select('owner members').lean();
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
 
     // Only project owner can update the project
-    if (project.owner.toString() !== userId) {
+    if (!objectIdEquals(project.owner, userId)) {
       return res.status(403).json({ message: 'Only project owner can update the project' });
     }
 
@@ -543,7 +558,7 @@ export const updateProjectController = async (
     .lean();
 
     // Invalidate caches
-    await invalidateProjectCaches(projectId, userId);
+    await invalidateProjectCaches(projectId, getProjectParticipantIds(project));
 
     res.status(200).json(updatedProject);
   } catch (error: any) {
@@ -561,13 +576,13 @@ export const deleteProjectController = async (
     const userId = (req as any).user.id;
 
     // Check if the project exists and user has permission to delete it
-    const project = await Project.findById(projectId).select('owner board').lean();
+    const project = await Project.findById(projectId).select('owner members board').lean();
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
 
     // Only project owner can delete the project
-    if (project.owner.toString() !== userId) {
+    if (!objectIdEquals(project.owner, userId)) {
       return res.status(403).json({ message: 'Only project owner can delete the project' });
     }
 
@@ -583,10 +598,13 @@ export const deleteProjectController = async (
     }
 
     // Delete the project
-    await Project.findByIdAndDelete(projectId);
+    await Promise.all([
+      Task.deleteMany({ project: projectId }),
+      Project.findByIdAndDelete(projectId),
+    ]);
 
     // Invalidate caches
-    await invalidateProjectCaches(projectId, userId);
+    await invalidateProjectCaches(projectId, getProjectParticipantIds(project));
 
     res.status(200).json({ message: 'Project deleted successfully' });
   } catch (error: any) {
