@@ -25,31 +25,23 @@ import {
   Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import apiClient from '@/lib/axios';
-import { EditProjectModal } from './EditProjectModal';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { queryKeys } from '@/lib/queryKeys';
+import type { Project } from '@/types/domain';
 
-export interface Project {
-  _id: string;
-  name: string;
-  description?: string;
-  status: 'active' | 'completed' | 'on-hold'; // Back to strict typing since backend now properly returns status
-  dueDate?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  tasks?: string[];
-  completedTasks?: number;
-  totalTasks?: number;
-  owner?: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-}
+export type { Project };
+
+const EditProjectModal = dynamic(
+  () => import('./EditProjectModal').then((mod) => mod.EditProjectModal)
+);
+
+const ConfirmationModal = dynamic(
+  () => import('@/components/ui/ConfirmationModal').then((mod) => mod.ConfirmationModal)
+);
 
 interface ProjectCardProps {
   project: Project;

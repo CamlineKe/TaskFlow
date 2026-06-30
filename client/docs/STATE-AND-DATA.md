@@ -10,6 +10,8 @@ The client uses three main state layers:
 
 Form state is handled separately through React Hook Form and Zod.
 
+Shared domain types for common server objects live in `types/domain.ts`.
+
 ## Auth Store
 
 File: `store/auth.store.ts`

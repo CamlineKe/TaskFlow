@@ -17,22 +17,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { BoardColumn } from './Column';
-import { TaskCard, Task } from './TaskCard';
+import { TaskCard } from './TaskCard';
 import { TaskDetailModal } from './TaskDetailModal';
 import apiClient from '@/lib/axios';
 import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
-
-interface Column {
-  _id: string;
-  title: string;
-  tasks: Task[];
-}
-
-interface BoardData {
-  _id: string;
-  name: string;
-  columns: Column[];
-}
+import type { BoardColumnData, BoardData, Task } from '@/types/domain';
 
 interface BoardProps {
   projectId: string;
@@ -122,8 +111,8 @@ export function Board({ projectId }: BoardProps) {
     const overId = over.id as string;
 
     // Find source and target columns
-    let sourceColumn: Column | undefined;
-    let targetColumn: Column | undefined;
+    let sourceColumn: BoardColumnData | undefined;
+    let targetColumn: BoardColumnData | undefined;
 
     board?.columns.forEach(column => {
       const task = column.tasks.find(t => t._id === activeId);

@@ -28,14 +28,18 @@ import {
   ViewList as ViewListIcon,
   MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
+import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 
 import apiClient from '@/lib/axios';
 import { ProjectCard, Project } from '@/components/projects/ProjectCard';
-import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { ProjectCardSkeleton } from '@/components/projects/ProjectCardSkeleton';
 import { queryKeys } from '@/lib/queryKeys';
+
+const CreateProjectModal = dynamic(
+  () => import('@/components/projects/CreateProjectModal').then((mod) => mod.CreateProjectModal)
+);
 
 const fetchProjects = async (): Promise<Project[]> => {
   const { data } = await apiClient.get('/projects');

@@ -74,8 +74,10 @@ The protected app layout uses `SessionLoader` to hydrate the current user with `
 - Toast notifications are handled by Sonner.
 - The active theme implementation is wired through `next-themes`, `lib/providers.tsx`, and `context/ThemeContext.tsx`.
 - Task creation is routed through the shared `components/tasks/CreateTaskModal.tsx` implementation.
+- Shared task, project, board, and user summary types live in `types/domain.ts`.
+- Heavier secondary UI surfaces such as board and modal workflows are dynamically imported where practical.
 
 ## Known Constraints
 
 - Password reset token and code are temporarily held in `sessionStorage` after code verification and cleared after a successful reset.
-- Project and task entity types are still duplicated in several page/component files.
+- Further bundle work should focus on the settings route and broader MUI/icon usage.

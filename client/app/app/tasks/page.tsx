@@ -29,6 +29,8 @@ import {
   FormGroup,
   FormControlLabel,
   Divider,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -48,32 +50,24 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/axios';
-import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
-import { TaskDetailModal } from '@/components/board/TaskDetailModal';
-import { TaskCompletionConfirmModal } from '@/components/tasks/TaskCompletionConfirmModal';
 import { toast } from 'sonner';
 import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
+import type { Task } from '@/types/domain';
 
-// Task interface - fixed to use only _id and remove completed field
-interface Task {
-  _id: string;
-  title: string;
-  description?: string;
-  status: 'todo' | 'in-progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  dueDate?: string;
-  project?: {
-    _id: string;
-    name: string;
-  };
-  assignee?: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-}
+const CreateTaskModal = dynamic(
+  () => import('@/components/tasks/CreateTaskModal').then((mod) => mod.CreateTaskModal)
+);
+
+const TaskDetailModal = dynamic(
+  () => import('@/components/board/TaskDetailModal').then((mod) => mod.TaskDetailModal)
+);
+
+const TaskCompletionConfirmModal = dynamic(
+  () => import('@/components/tasks/TaskCompletionConfirmModal').then((mod) => mod.TaskCompletionConfirmModal)
+);
 
 const fetchTasks = async (): Promise<Task[]> => {
   const { data } = await apiClient.get('/tasks');
@@ -332,6 +326,55 @@ export default function TasksPage() {
     return filtered;
   };
 
+  const allFilteredTasks = filterTasks();
+  const activeFilteredTasks = filterTasks('active');
+  const completedFilteredTasks = filterTasks('completed');
+
+  const renderTaskList = (tasksToRender: Task[], emptyMessage: string) => {
+    if (isLoading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (isError) {
+      return (
+        <Alert severity="error" sx={{ my: 2 }}>
+          Failed to load tasks. Please try again.
+        </Alert>
+      );
+    }
+
+    if (tasksToRender.length === 0) {
+      return (
+        <motion.div variants={staggerChild}>
+          <Box sx={{ textAlign: 'center', py: 8, px: 2 }}>
+            <AssignmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" gutterBottom color="text.secondary">
+              {emptyMessage}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              {searchQuery ? 'Try adjusting your search query' : 'Create your first task to get started'}
+            </Typography>
+            <Button variant="contained" startIcon={<AddIcon />} size="large" onClick={handleCreateTask}>
+              Create New Task
+            </Button>
+          </Box>
+        </motion.div>
+      );
+    }
+
+    return (
+      <motion.div variants={staggerContainer}>
+        {tasksToRender.map((task) => (
+          <TaskCard key={task._id} task={task} />
+        ))}
+      </motion.div>
+    );
+  };
+
   const TaskCard = ({ task }: { task: Task }) => {
     const isCompleted = task.status === 'completed';
 
@@ -518,17 +561,17 @@ export default function TasksPage() {
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs value={tabValue} onChange={handleTabChange} aria-label="task tabs">
                 <Tab
-                  label={`All Tasks (${filterTasks().length})`}
+                  label={`All Tasks (${allFilteredTasks.length})`}
                   icon={<AssignmentIcon />}
                   iconPosition="start"
                 />
                 <Tab
-                  label={`Active (${filterTasks('active').length})`}
+                  label={`Active (${activeFilteredTasks.length})`}
                   icon={<ScheduleIcon />}
                   iconPosition="start"
                 />
                 <Tab
-                  label={`Completed (${filterTasks('completed').length})`}
+                  label={`Completed (${completedFilteredTasks.length})`}
                   icon={<CheckCircleIcon />}
                   iconPosition="start"
                 />
@@ -538,52 +581,16 @@ export default function TasksPage() {
 
           {/* Task Lists */}
           <TabPanel value={tabValue} index={0}>
-            <motion.div variants={staggerContainer}>
-              {filterTasks().map((task: Task) => (
-                <TaskCard key={task._id} task={task} />
-              ))}
-            </motion.div>
+            {renderTaskList(allFilteredTasks, 'No tasks found')}
           </TabPanel>
 
           <TabPanel value={tabValue} index={1}>
-            <motion.div variants={staggerContainer}>
-              {filterTasks('active').map((task: Task) => (
-                <TaskCard key={task._id} task={task} />
-              ))}
-            </motion.div>
+            {renderTaskList(activeFilteredTasks, 'No active tasks found')}
           </TabPanel>
 
           <TabPanel value={tabValue} index={2}>
-            <motion.div variants={staggerContainer}>
-              {filterTasks('completed').map((task: Task) => (
-                <TaskCard key={task._id} task={task} />
-              ))}
-            </motion.div>
+            {renderTaskList(completedFilteredTasks, 'No completed tasks found')}
           </TabPanel>
-
-          {/* Empty State */}
-          {filterTasks().length === 0 && (
-            <motion.div variants={staggerChild}>
-              <Box
-                sx={{
-                  textAlign: 'center',
-                  py: 8,
-                  px: 2,
-                }}
-              >
-                <AssignmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                <Typography variant="h6" gutterBottom color="text.secondary">
-                  No tasks found
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  {searchQuery ? 'Try adjusting your search query' : 'Create your first task to get started'}
-                </Typography>
-                <Button variant="contained" startIcon={<AddIcon />} size="large" onClick={handleCreateTask}>
-                  Create New Task
-                </Button>
-              </Box>
-            </motion.div>
-          )}
 
           {/* Floating Action Button */}
           <Fab

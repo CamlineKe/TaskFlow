@@ -23,7 +23,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'; // Import ConfirmationModal
 import apiClient from '@/lib/axios';
 import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
-import { Task } from './TaskCard';
+import type { Task } from '@/types/domain';
 
 const editTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),

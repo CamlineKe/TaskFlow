@@ -12,6 +12,7 @@ The main architectural split is:
 - Global providers in `lib/providers.tsx`.
 - Auth persistence in `store/auth.store.ts`.
 - Theme bridge helpers in `context/ThemeContext.tsx` and `lib/theme.ts`.
+- Shared API domain types in `types/domain.ts`.
 
 ## Runtime Entry Points
 
@@ -78,7 +79,7 @@ Common query-backed areas:
 - User profile
 - User stats
 
-Mutations invalidate query keys after successful writes. This keeps the UI eventually consistent with server state, but some keys are not named consistently across components. See [State and Data](STATE-AND-DATA.md).
+Mutations invalidate query keys after successful writes. Task-oriented invalidation is centralized through `invalidateTaskViews` in `lib/queryKeys.ts` so task lists, dashboards, project detail, and board views stay aligned.
 
 ## UI Architecture
 
@@ -91,6 +92,8 @@ Primary UI groups:
 - `components/projects`: project cards and project/task modals.
 - `components/tasks`: task creation and completion confirmation.
 - `components/board`: kanban board, columns, draggable task cards, task detail modal.
+
+Heavy secondary UI is loaded dynamically where practical. Project detail lazy-loads the board and modal workflows, the task page lazy-loads task modals, and project cards lazy-load edit/delete dialogs. This keeps first-load JavaScript lower for the main scanning views.
 
 ## Theming
 
@@ -113,6 +116,5 @@ The previous legacy provider under `components/providers/ThemeProvider.tsx` has 
 
 ## Known Constraints
 
-- Query key naming is inconsistent in some board/task/project paths.
 - Password reset token and code are temporarily held in `sessionStorage` after verification and cleared after a successful reset.
-- Project and task entity interfaces are still duplicated across several page/component files.
+- Further bundle work should focus on broader MUI/icon import strategy and the settings route.

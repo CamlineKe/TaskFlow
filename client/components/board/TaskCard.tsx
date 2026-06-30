@@ -7,24 +7,9 @@ import {
   Person as PersonIcon,
   Flag as FlagIcon,
 } from '@mui/icons-material';
+import type { Task } from '@/types/domain';
 
-export interface Task {
-  _id: string;
-  title: string;
-  description?: string;
-  priority?: 'low' | 'medium' | 'high';
-  status?: 'todo' | 'in-progress' | 'completed';
-  dueDate?: string;
-  assignee?: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  project?: {
-    _id: string;
-    name: string;
-  };
-}
+export type { Task };
 
 interface TaskCardProps {
   task: Task;

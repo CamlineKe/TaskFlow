@@ -5,14 +5,10 @@ import { Box, Typography, Paper, IconButton, Button, useTheme } from '@mui/mater
 import AddIcon from '@mui/icons-material/Add';
 import { useDroppable } from '@dnd-kit/core';
 
-import { Task as ITask } from './TaskCard';
 import { CreateTaskModal } from './CreateTaskModal';
+import type { BoardColumnData } from '@/types/domain';
 
-export interface Column {
-  _id: string;
-  title: string;
-  tasks: ITask[];
-}
+export type Column = BoardColumnData;
 
 interface ColumnProps {
   column: Column;

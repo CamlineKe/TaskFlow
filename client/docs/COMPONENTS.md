@@ -9,7 +9,7 @@ Components are grouped by feature:
 - `components/projects`: project cards and project-scoped modals.
 - `components/tasks`: task list workflow modals.
 - `components/board`: board, columns, draggable cards, and task detail modal.
-- `components/providers`: legacy theme provider implementation.
+- `types`: shared task, project, board, and user summary type definitions.
 
 ## Layout Components
 
@@ -48,6 +48,8 @@ Displays project metadata in grid or list mode. Handles:
 - Delete confirmation.
 - Project status toggle.
 
+The edit and confirmation dialogs are dynamically imported because they are only needed after user interaction.
+
 ### CreateProjectModal
 
 File: `components/projects/CreateProjectModal.tsx`
@@ -70,7 +72,7 @@ Loading placeholder for project card lists.
 
 File: `components/projects/CreateTaskModalForProject.tsx`
 
-Creates a task inside a specific project. It fetches the project board, selects the first column, then posts to `/tasks` with `projectId` and `columnId`.
+Project-specific wrapper around the shared task creation modal.
 
 ## Task Components
 
@@ -78,7 +80,7 @@ Creates a task inside a specific project. It fetches the project board, selects 
 
 File: `components/tasks/CreateTaskModal.tsx`
 
-Creates a task from the global tasks page. It fetches projects, asks the user to choose one, fetches that project's board, selects the first column, and posts to `/tasks`.
+Shared task creation implementation. It can operate globally by asking for a project, in a project context by receiving `projectId`, or in a board-column context by receiving both `projectId` and `columnId`.
 
 ### TaskCompletionConfirmModal
 
@@ -150,13 +152,8 @@ It provides:
 Common patterns:
 
 - Task creation uses the shared `components/tasks/CreateTaskModal.tsx` implementation with context-specific wrappers.
+- Route pages dynamically import heavier modal and board components where those surfaces are not required for first paint.
 - Mutations show Sonner toasts.
 - Successful task mutations use shared React Query invalidation helpers from `lib/queryKeys.ts`.
 - Form inputs use React Hook Form and Zod.
 - MUI `sx` props are used directly for layout and styling.
-
-## Refactor Candidates
-
-These are documentation observations, not completed changes:
-
-- Extract shared task/project types to reduce duplicated interfaces.

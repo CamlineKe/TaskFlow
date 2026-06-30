@@ -38,51 +38,38 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 import apiClient from '@/lib/axios';
-import { CreateTaskModalForProject } from '@/components/projects/CreateTaskModalForProject';
-import { TaskCompletionConfirmModal } from '@/components/tasks/TaskCompletionConfirmModal';
-import { EditProjectModal } from '@/components/projects/EditProjectModal';
-import { Board } from '@/components/board/Board';
 import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
+import type { ProjectDetail, Task } from '@/types/domain';
 
-interface Task {
-  _id: string;
-  title: string;
-  description?: string;
-  status: 'todo' | 'in-progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  dueDate?: string;
-  assignee?: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-}
+const CreateTaskModalForProject = dynamic(
+  () => import('@/components/projects/CreateTaskModalForProject').then((mod) => mod.CreateTaskModalForProject)
+);
 
-interface ProjectDetail {
-  _id: string;
-  name: string;
-  description?: string;
-  status: 'active' | 'completed' | 'on-hold';
-  dueDate?: string;
-  createdAt: string;
-  updatedAt: string;
-  owner: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  tasks: Task[];
-  team?: Array<{
-    _id: string;
-    name: string;
-    email: string;
-  }>;
-}
+const TaskCompletionConfirmModal = dynamic(
+  () => import('@/components/tasks/TaskCompletionConfirmModal').then((mod) => mod.TaskCompletionConfirmModal)
+);
+
+const EditProjectModal = dynamic(
+  () => import('@/components/projects/EditProjectModal').then((mod) => mod.EditProjectModal)
+);
+
+const Board = dynamic(
+  () => import('@/components/board/Board').then((mod) => mod.Board),
+  {
+    ssr: false,
+    loading: () => (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    ),
+  }
+);
 
 const fetchProjectDetail = async (projectId: string): Promise<ProjectDetail> => {
   const { data } = await apiClient.get(`/projects/${projectId}`);
