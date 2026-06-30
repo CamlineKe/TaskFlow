@@ -15,111 +15,157 @@ import {
   Select,
   InputLabel,
 } from '@mui/material';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { Modal } from '@/components/ui/Modal';
 import apiClient from '@/lib/axios';
+import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
 
-// Zod schema for task creation
 const createTaskSchema = z.object({
   title: z.string().min(1, 'Task title is required').max(200, 'Title cannot exceed 200 characters'),
   description: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high']).default('medium'),
-  projectId: z.string().min(1, 'Project is required'),
+  projectId: z.string().optional(),
 });
 
 type CreateTaskFormValues = z.infer<typeof createTaskSchema>;
 
+interface ProjectOption {
+  _id: string;
+  name: string;
+}
+
+interface BoardColumn {
+  _id: string;
+}
+
 interface CreateTaskModalProps {
   open: boolean;
   onClose: () => void;
+  projectId?: string;
+  columnId?: string;
+  title?: string;
 }
-
-// Fetch user's projects
-const fetchProjects = async () => {
-  const { data } = await apiClient.get('/projects');
-  return data;
-};
-
-// Create task function - will create in the first column (To Do) by default
-const createTask = async (data: CreateTaskFormValues) => {
-  // First get the project's board to find the first column
-  const boardResponse = await apiClient.get(`/projects/${data.projectId}/board`);
-  const columns = boardResponse.data.columns;
-  
-  if (!columns || columns.length === 0) {
-    throw new Error('No columns found in project');
-  }
-  
-  // Use the first column (typically "To Do")
-  const firstColumn = columns[0];
-  
-  const taskData = {
-    ...data,
-    columnId: firstColumn._id,
-  };
-  
-  const response = await apiClient.post('/tasks', taskData);
-  return response.data;
-};
 
 const priorityOptions = [
   { value: 'low', label: 'Low', color: 'info' as const },
   { value: 'medium', label: 'Medium', color: 'warning' as const },
   { value: 'high', label: 'High', color: 'error' as const },
-];
+] as const;
 
-export function CreateTaskModal({ open, onClose }: CreateTaskModalProps) {
+const fetchProjects = async (): Promise<ProjectOption[]> => {
+  const { data } = await apiClient.get('/projects');
+  return data;
+};
+
+const fetchFirstColumnId = async (projectId: string) => {
+  const { data } = await apiClient.get(`/projects/${projectId}/board`);
+  const firstColumn = data.columns?.[0] as BoardColumn | undefined;
+
+  if (!firstColumn) {
+    throw new Error('No columns found in project');
+  }
+
+  return firstColumn._id;
+};
+
+const createTask = async (
+  data: CreateTaskFormValues & { projectId: string; columnId?: string }
+) => {
+  const columnId = data.columnId || await fetchFirstColumnId(data.projectId);
+  const response = await apiClient.post('/tasks', {
+    title: data.title,
+    description: data.description,
+    priority: data.priority,
+    projectId: data.projectId,
+    columnId,
+  });
+
+  return response.data;
+};
+
+export function CreateTaskModal({
+  open,
+  onClose,
+  projectId,
+  columnId,
+  title = 'Create New Task',
+}: CreateTaskModalProps) {
   const queryClient = useQueryClient();
+  const shouldSelectProject = !projectId;
 
   const {
     register,
     handleSubmit,
     reset,
     setValue,
+    setError,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateTaskFormValues>({
     resolver: zodResolver(createTaskSchema),
     defaultValues: {
+      title: '',
+      description: '',
       priority: 'medium',
+      projectId: '',
     },
   });
 
   const watchedPriority = watch('priority');
 
-  // Fetch projects
   const { data: projects = [] } = useQuery({
-    queryKey: ['projects'],
+    queryKey: queryKeys.projects,
     queryFn: fetchProjects,
+    enabled: open && shouldSelectProject,
   });
 
-  // Create task mutation
   const mutation = useMutation({
     mutationFn: createTask,
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success('Task created successfully!');
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      reset();
+      invalidateTaskViews(queryClient, { projectId: variables.projectId });
+      reset({
+        title: '',
+        description: '',
+        priority: 'medium',
+        projectId: '',
+      });
       onClose();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create task.');
+      toast.error(error.response?.data?.message || error.message || 'Failed to create task.');
     },
   });
 
   const onSubmit = (data: CreateTaskFormValues) => {
-    mutation.mutate(data);
+    const resolvedProjectId = projectId || data.projectId;
+
+    if (!resolvedProjectId) {
+      setError('projectId', { message: 'Project is required' });
+      return;
+    }
+
+    mutation.mutate({
+      ...data,
+      projectId: resolvedProjectId,
+      columnId,
+    });
   };
 
   const handleClose = () => {
-    reset();
+    reset({
+      title: '',
+      description: '',
+      priority: 'medium',
+      projectId: '',
+    });
     onClose();
   };
 
   return (
-    <Modal open={open} onClose={handleClose} title="Create New Task" maxWidth="sm">
+    <Modal open={open} onClose={handleClose} title={title} maxWidth="sm">
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Stack spacing={3}>
           <TextField
@@ -132,7 +178,7 @@ export function CreateTaskModal({ open, onClose }: CreateTaskModalProps) {
             error={!!errors.title}
             helperText={errors.title?.message}
           />
-          
+
           <TextField
             label="Description"
             fullWidth
@@ -143,27 +189,29 @@ export function CreateTaskModal({ open, onClose }: CreateTaskModalProps) {
             error={!!errors.description}
             helperText={errors.description?.message || 'Optional task description'}
           />
-          
-          <FormControl fullWidth required error={!!errors.projectId}>
-            <InputLabel>Project</InputLabel>
-            <Select
-              label="Project"
-              {...register('projectId')}
-              defaultValue=""
-            >
-              {projects.map((project: any) => (
-                <MenuItem key={project._id} value={project._id}>
-                  {project.name}
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.projectId && (
-              <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.5 }}>
-                {errors.projectId.message}
-              </Box>
-            )}
-          </FormControl>
-          
+
+          {shouldSelectProject && (
+            <FormControl fullWidth required error={!!errors.projectId}>
+              <InputLabel>Project</InputLabel>
+              <Select
+                label="Project"
+                defaultValue=""
+                {...register('projectId')}
+              >
+                {projects.map((project) => (
+                  <MenuItem key={project._id} value={project._id}>
+                    {project.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.projectId && (
+                <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.5 }}>
+                  {errors.projectId.message}
+                </Box>
+              )}
+            </FormControl>
+          )}
+
           <FormControl>
             <FormLabel sx={{ mb: 1, fontWeight: 500 }}>Priority</FormLabel>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -173,7 +221,7 @@ export function CreateTaskModal({ open, onClose }: CreateTaskModalProps) {
                   label={option.label}
                   color={watchedPriority === option.value ? option.color : 'default'}
                   variant={watchedPriority === option.value ? 'filled' : 'outlined'}
-                  onClick={() => setValue('priority', option.value as any)}
+                  onClick={() => setValue('priority', option.value)}
                   sx={{
                     cursor: 'pointer',
                     '&:hover': {
@@ -184,7 +232,7 @@ export function CreateTaskModal({ open, onClose }: CreateTaskModalProps) {
               ))}
             </Box>
           </FormControl>
-          
+
           <Box sx={{ display: 'flex', gap: 2, pt: 2 }}>
             <Button
               variant="outlined"

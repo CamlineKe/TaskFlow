@@ -103,7 +103,9 @@ function VerifyResetCodeContent() {
 
   const handleContinue = () => {
     if (resetToken && verificationCode) {
-      router.push(`/reset-password/reset?token=${resetToken}&code=${verificationCode}`);
+      sessionStorage.setItem('passwordResetToken', resetToken);
+      sessionStorage.setItem('passwordResetCode', verificationCode);
+      router.push('/reset-password/reset');
     }
   };
 
@@ -360,7 +362,7 @@ function VerifyResetCodeContent() {
           
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              Didn't receive a code?{' '}
+              Didn&apos;t receive a code?{' '}
               <Link href="/forgot-password" style={{ textDecoration: 'none' }}>
                 <Typography 
                   component="span" 

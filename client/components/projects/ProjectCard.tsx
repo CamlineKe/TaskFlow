@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import apiClient from '@/lib/axios';
 import { EditProjectModal } from './EditProjectModal';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { queryKeys } from '@/lib/queryKeys';
 
 export interface Project {
   _id: string;
@@ -70,7 +71,7 @@ export function ProjectCard({ project, viewMode = 'grid' }: ProjectCardProps) {
     },
     onSuccess: () => {
       toast.success('Project deleted successfully!');
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to delete project');
@@ -85,8 +86,8 @@ export function ProjectCard({ project, viewMode = 'grid' }: ProjectCardProps) {
     },
     onSuccess: () => {
       toast.success('Project status updated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['project', project._id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+      queryClient.invalidateQueries({ queryKey: queryKeys.project(project._id) });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update project status');

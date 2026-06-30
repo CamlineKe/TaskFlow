@@ -308,7 +308,7 @@ export default function LoginPage() {
           
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href="/register" style={{ textDecoration: 'none' }}>
                 <Typography 
                   component="span" 

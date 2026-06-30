@@ -79,7 +79,7 @@ export default function LandingPage() {
       setCurrentWord((prev) => (prev + 1) % words.length);
     }, 2500);
     return () => clearInterval(interval);
-  }, []);
+  }, [words.length]);
 
   // Don't render until mounted to prevent hydration mismatch
   if (!mounted) {

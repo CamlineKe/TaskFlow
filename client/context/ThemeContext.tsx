@@ -13,9 +13,7 @@ export interface ThemeContextType {
 // Create the context with a default value
 export const ThemeContext = createContext<ThemeContextType>({
   mode: 'dark',
-  toggleColorMode: () => {
-    console.error('toggleColorMode function not implemented');
-  },
+  toggleColorMode: () => undefined,
   mounted: false,
 });
 

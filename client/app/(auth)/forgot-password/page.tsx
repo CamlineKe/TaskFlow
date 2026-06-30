@@ -166,7 +166,7 @@ export default function ForgotPasswordPage() {
                   variant="body1"
                   sx={{ color: 'rgba(255, 255, 255, 0.9)', mb: 2 }}
                 >
-                  We've sent a verification code to your email address. Please check your inbox and follow the instructions to reset your password.
+                  We&apos;ve sent a verification code to your email address. Please check your inbox and follow the instructions to reset your password.
                 </Typography>
                 
                 <Button

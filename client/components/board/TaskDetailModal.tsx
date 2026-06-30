@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'; // Import ConfirmationModal
 import apiClient from '@/lib/axios';
+import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
 import { Task } from './TaskCard';
 
 const editTaskSchema = z.object({
@@ -58,7 +59,7 @@ export function TaskDetailModal({ taskId, onClose, projectId }: TaskDetailModalP
   const [isConfirmOpen, setIsConfirmOpen] = useState(false); // State for confirmation modal
 
   const { data: task, isLoading, isError, error } = useQuery<Task>({
-    queryKey: ['task', taskId],
+    queryKey: queryKeys.task(taskId),
     queryFn: () => fetchTaskDetails(taskId!),
     enabled: !!taskId,
     retry: (failureCount, error: any) => {
@@ -92,12 +93,7 @@ export function TaskDetailModal({ taskId, onClose, projectId }: TaskDetailModalP
     mutationFn: updateTask,
     onSuccess: () => {
       toast.success('Task updated successfully!');
-      // Invalidate all relevant queries
-      queryClient.invalidateQueries({ queryKey: ['task', taskId] });
-      queryClient.invalidateQueries({ queryKey: ['projectBoard', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Add dashboard invalidation
+      invalidateTaskViews(queryClient, { projectId, taskId });
       onClose();
     },
     onError: (error: any) => {
@@ -109,11 +105,7 @@ export function TaskDetailModal({ taskId, onClose, projectId }: TaskDetailModalP
     mutationFn: deleteTask,
     onSuccess: () => {
       toast.success('Task deleted successfully!');
-      // Invalidate all relevant queries
-      queryClient.invalidateQueries({ queryKey: ['projectBoard', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Add dashboard invalidation
+      invalidateTaskViews(queryClient, { projectId });
       onClose(); // Close the main detail modal as well
     },
     onError: (error: any) => {

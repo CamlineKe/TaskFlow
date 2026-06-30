@@ -54,7 +54,7 @@ export function TaskCompletionConfirmModal({
         <DialogContentText>
           {isCompleting ? (
             <>
-              Are you sure you want to mark the task <strong>"{taskTitle}"</strong> as completed?
+              Are you sure you want to mark the task <strong>&quot;{taskTitle}&quot;</strong> as completed?
               <br />
               <br />
               <Typography variant="body2" color="warning.main">
@@ -63,7 +63,7 @@ export function TaskCompletionConfirmModal({
             </>
           ) : (
             <>
-              Are you sure you want to reopen the task <strong>"{taskTitle}"</strong>?
+              Are you sure you want to reopen the task <strong>&quot;{taskTitle}&quot;</strong>?
               <br />
               <br />
               This will move the task back to the active tasks list.

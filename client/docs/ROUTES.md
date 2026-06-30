@@ -18,7 +18,7 @@ The client uses Next.js App Router route groups:
 | `/register/verify` | `app/(auth)/register/verify/page.tsx` | Verifies email code and stores verification token/code in `sessionStorage`. |
 | `/register/complete` | `app/(auth)/register/complete/page.tsx` | Completes registration and clears registration session values. |
 | `/forgot-password` | `app/(auth)/forgot-password/page.tsx` | Requests password reset instructions. |
-| `/reset-password/verify` | `app/(auth)/reset-password/verify/page.tsx` | Verifies password reset code and routes to reset form with token/code query params. |
+| `/reset-password/verify` | `app/(auth)/reset-password/verify/page.tsx` | Verifies password reset code, stores reset session values, and routes to reset form. |
 | `/reset-password/reset` | `app/(auth)/reset-password/reset/page.tsx` | Submits new password using reset token and verification code. |
 
 ## Protected Routes
@@ -78,10 +78,10 @@ If a token exists but user data is missing, `SessionLoader` calls `/auth/me` bef
 1. `/forgot-password` posts to `/auth/password-reset/request`.
 2. User navigates to `/reset-password/verify`.
 3. Verification page posts to `/auth/password-reset/verify`.
-4. Reset token and code are passed to `/reset-password/reset` as query parameters.
+4. Reset token and code are stored temporarily in `sessionStorage`.
 5. Reset page posts token, code, and new password to `/auth/password-reset/reset`.
 
-The reset token/code URL behavior is security-sensitive and should be reviewed before production hardening.
+The reset token/code values are cleared after a successful password reset.
 
 ## Project Workflow
 

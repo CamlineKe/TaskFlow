@@ -69,21 +69,13 @@ Common query keys:
 | `['project', projectId]` | Project detail. |
 | `['tasks']` | Task list. |
 | `['task', taskId]` | Task detail modal. |
-| `['board', projectId]` | Board component. |
-| `['project-board', projectId]` | Project-scoped create task modal. |
-| `['projectBoard', projectId]` | Some board task mutation invalidations. |
+| `['board', projectId]` | Board data and board-related invalidation. |
 | `['user-profile']` | Settings profile data. |
 | `['user-stats']` | Settings account statistics. |
 
-## Query Key Caveat
+## Query Key Helpers
 
-Board-related keys are not fully consistent:
-
-- `['board', projectId]`
-- `['project-board', projectId]`
-- `['projectBoard', projectId]`
-
-This can cause stale UI after mutations if the active query key is not invalidated. Documentation should preserve this detail until the implementation is cleaned up.
+Query keys are centralized in `lib/queryKeys.ts`. Task mutations should use `invalidateTaskViews` so task, dashboard, project detail, and board data stay aligned after task create/update/delete/status changes.
 
 ## Main Data Fetches
 
@@ -105,10 +97,10 @@ This can cause stale UI after mutations if the active query key is not invalidat
 | Create project | `POST /projects` | `['projects']` |
 | Edit project | `PUT /projects/:projectId` | `['projects']`, `['project', projectId]` |
 | Delete project | `DELETE /projects/:projectId` | `['projects']` |
-| Create task | `POST /tasks` | Varies by modal; usually tasks, project, board/dashboard keys. |
-| Edit task | `PUT /tasks/:taskId` | task, project, tasks, dashboard, board-like keys. |
-| Delete task | `DELETE /tasks/:taskId` | project, tasks, dashboard, board-like keys. |
-| Update task status | `PUT /tasks/:taskId/status` | tasks, project, board/dashboard keys. |
+| Create task | `POST /tasks` | `invalidateTaskViews` with project context. |
+| Edit task | `PUT /tasks/:taskId` | `invalidateTaskViews` with project and task context. |
+| Delete task | `DELETE /tasks/:taskId` | `invalidateTaskViews` with project context. |
+| Update task status | `PUT /tasks/:taskId/status` | `invalidateTaskViews` with available project context. |
 | Update profile | `PUT /users/profile` | `['user-profile']` and Zustand user. |
 | Update notifications | `PUT /users/notifications` | `['user-profile']` |
 | Change password | `PUT /users/change-password` | No query invalidation required. |
@@ -136,8 +128,10 @@ Examples:
 | sessionStorage | `registrationEmail` | Registration flow email. |
 | sessionStorage | `verificationToken` | Registration verification token. |
 | sessionStorage | `verificationCode` | Registration verification code. |
+| sessionStorage | `passwordResetToken` | Password reset token after reset-code verification. |
+| sessionStorage | `passwordResetCode` | Password reset code after verification. |
 
-The active theme provider uses `next-themes`; theme state is managed by that library rather than the legacy `themeMode` key in `components/providers/ThemeProvider.tsx`.
+The active theme provider uses `next-themes`; theme state is managed by that library.
 
 ## Loading and Error States
 
@@ -151,4 +145,4 @@ Errors are shown through:
 
 ## Observability Notes
 
-Dashboard and tasks currently log data fetches and state summaries to the browser console. That can help during development, but it should be reviewed before production cleanup.
+Session verification failures are logged in development only. User-facing workflow feedback is handled through Sonner toasts and MUI alerts.

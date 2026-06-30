@@ -47,13 +47,14 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/axios';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { TaskDetailModal } from '@/components/board/TaskDetailModal';
 import { TaskCompletionConfirmModal } from '@/components/tasks/TaskCompletionConfirmModal';
 import { toast } from 'sonner';
+import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
 
 // Task interface - fixed to use only _id and remove completed field
 interface Task {
@@ -74,12 +75,8 @@ interface Task {
   };
 }
 
-// API fetch function with logging
 const fetchTasks = async (): Promise<Task[]> => {
-  console.log('🔍 Fetching tasks...');
   const { data } = await apiClient.get('/tasks');
-  console.log('📥 Tasks API response:', data);
-  // Extract tasks from paginated response
   return data.tasks || [];
 };
 
@@ -158,20 +155,9 @@ export default function TasksPage() {
 
   // Fetch tasks from API
   const { data: tasks, isLoading, isError } = useQuery<Task[]>({
-    queryKey: ['tasks'],
+    queryKey: queryKeys.tasks,
     queryFn: fetchTasks,
   });
-
-  // Log tasks whenever they change
-  useEffect(() => {
-    console.log('📊 Tasks in component:', tasks);
-    console.log('📊 Task counts:', {
-      total: tasks?.length || 0,
-      completed: tasks?.filter(t => t.status === 'completed').length || 0,
-      inProgress: tasks?.filter(t => t.status === 'in-progress').length || 0,
-      todo: tasks?.filter(t => t.status === 'todo').length || 0,
-    });
-  }, [tasks]);
 
   // Use empty array as fallback
   const taskList = tasks || [];
@@ -184,8 +170,7 @@ export default function TasksPage() {
     },
     onSuccess: () => {
       toast.success('Task status updated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['project'] });
+      invalidateTaskViews(queryClient);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update task status');

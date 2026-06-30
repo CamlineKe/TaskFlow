@@ -73,11 +73,9 @@ The protected app layout uses `SessionLoader` to hydrate the current user with `
 - Auth state uses Zustand with persistence to browser storage.
 - Toast notifications are handled by Sonner.
 - The active theme implementation is wired through `next-themes`, `lib/providers.tsx`, and `context/ThemeContext.tsx`.
-- `components/providers/ThemeProvider.tsx` appears to be a legacy provider and is not part of the current root provider stack.
+- Task creation is routed through the shared `components/tasks/CreateTaskModal.tsx` implementation.
 
 ## Known Constraints
 
-- Some React Query cache keys are inconsistent across features, such as `board`, `projectBoard`, and `project-board`.
-- Dashboard and task pages include development logging.
-- Password reset token and code are passed through URL query parameters after verification. Treat that as security-sensitive behavior when changing the flow.
-- The task creation path has multiple modal variants with overlapping responsibilities.
+- Password reset token and code are temporarily held in `sessionStorage` after code verification and cleared after a successful reset.
+- Project and task entity types are still duplicated in several page/component files.

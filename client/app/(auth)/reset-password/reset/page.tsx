@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from 'react'; // Add this import
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,7 +27,7 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import apiClient from '@/lib/axios';
@@ -60,20 +59,14 @@ const fadeIn = {
   visible: { opacity: 1, transition: { duration: 0.8, delay: 0.2 } },
 };
 
-// Inner component that uses useSearchParams
 function ResetPasswordContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const theme = useTheme();
   const [serverError, setServerError] = useState<string | null>(null);
   const [resetComplete, setResetComplete] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  // Get the token from URL params
-  const tokenParam = searchParams?.get('token');
-  const codeParam = searchParams?.get('code');
-
   const {
     register,
     handleSubmit,
@@ -89,15 +82,19 @@ function ResetPasswordContent() {
     }
   });
 
-  // Set the token from URL params if available
   useEffect(() => {
-    if (tokenParam) {
-      setValue('token', tokenParam);
+    const storedToken = sessionStorage.getItem('passwordResetToken');
+    const storedCode = sessionStorage.getItem('passwordResetCode');
+
+    if (!storedToken || !storedCode) {
+      toast.error('Please verify your reset code first.');
+      router.replace('/reset-password/verify');
+      return;
     }
-    if (codeParam) {
-      setValue('code', codeParam);
-    }
-  }, [tokenParam, codeParam, setValue]);
+
+    setValue('token', storedToken);
+    setValue('code', storedCode);
+  }, [router, setValue]);
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
     setServerError(null);
@@ -107,7 +104,9 @@ function ResetPasswordContent() {
         code: data.code,
         newPassword: data.newPassword,
       });
-      
+
+      sessionStorage.removeItem('passwordResetToken');
+      sessionStorage.removeItem('passwordResetCode');
       setResetComplete(true);
       toast.success('Password reset successfully');
 
@@ -467,25 +466,6 @@ function ResetPasswordContent() {
   );
 }
 
-// Main page component with Suspense wrapper
 export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={
-      <Box
-        sx={{
-          minHeight: '100vh',
-          background: '#0F172A',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: { xs: 2, md: 3 },
-          color: 'white'
-        }}
-      >
-        <Typography>Loading password reset...</Typography>
-      </Box>
-    }>
-      <ResetPasswordContent />
-    </Suspense>
-  );
+  return <ResetPasswordContent />;
 }

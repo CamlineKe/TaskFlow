@@ -79,7 +79,7 @@ export default function RegisterPage() {
       toast.success('Verification code sent to your email. Please check your inbox.');
 
       // Log preview URL in development for testing
-      if (previewUrl) {
+      if (previewUrl && process.env.NODE_ENV === 'development') {
         console.log('Email preview URL (development only):', previewUrl);
       }
 

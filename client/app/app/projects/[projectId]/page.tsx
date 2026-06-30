@@ -47,6 +47,7 @@ import { CreateTaskModalForProject } from '@/components/projects/CreateTaskModal
 import { TaskCompletionConfirmModal } from '@/components/tasks/TaskCompletionConfirmModal';
 import { EditProjectModal } from '@/components/projects/EditProjectModal';
 import { Board } from '@/components/board/Board';
+import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
 
 interface Task {
   _id: string;
@@ -133,7 +134,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const queryClient = useQueryClient();
 
   const { data: project, isLoading, isError, error } = useQuery<ProjectDetail>({
-    queryKey: ['project', projectId],
+    queryKey: queryKeys.project(projectId),
     queryFn: () => fetchProjectDetail(projectId),
     retry: (failureCount, error: any) => {
       // Don't retry on 404 errors (project not found/deleted)
@@ -160,9 +161,7 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
     },
     onSuccess: () => {
       toast.success('Task status updated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['board', projectId] });
+      invalidateTaskViews(queryClient, { projectId });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update task status');

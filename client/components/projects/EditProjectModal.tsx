@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
 import apiClient from '@/lib/axios';
 import { Project } from './ProjectCard';
+import { queryKeys } from '@/lib/queryKeys';
 
 // Zod schema for project editing
 const editProjectSchema = z.object({
@@ -81,8 +82,8 @@ export function EditProjectModal({ open, onClose, project }: EditProjectModalPro
     mutationFn: (data: EditProjectFormValues) => updateProject(project._id, data),
     onSuccess: () => {
       toast.success('Project updated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['project', project._id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+      queryClient.invalidateQueries({ queryKey: queryKeys.project(project._id) });
       reset();
       onClose();
     },

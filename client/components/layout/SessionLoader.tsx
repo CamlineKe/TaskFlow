@@ -30,7 +30,9 @@ export function SessionLoader({ children }: { children: React.ReactNode }) {
         setUser(userData, storedToken);
       } catch (error) {
         // If the request fails (e.g., token expired), log the user out.
-        console.error('Session verification failed:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Session verification failed:', error);
+        }
         logout();
       } finally {
         // In any case, stop loading.

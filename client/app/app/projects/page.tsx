@@ -35,6 +35,7 @@ import apiClient from '@/lib/axios';
 import { ProjectCard, Project } from '@/components/projects/ProjectCard';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { ProjectCardSkeleton } from '@/components/projects/ProjectCardSkeleton';
+import { queryKeys } from '@/lib/queryKeys';
 
 const fetchProjects = async (): Promise<Project[]> => {
   const { data } = await apiClient.get('/projects');
@@ -100,7 +101,7 @@ export default function ProjectsPage() {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
   const { data: projects, isLoading, isError, error } = useQuery<Project[]>({
-    queryKey: ['projects'],
+    queryKey: queryKeys.projects,
     queryFn: fetchProjects,
   });
 

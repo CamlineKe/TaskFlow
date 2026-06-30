@@ -120,7 +120,7 @@ Draggable board task card. Displays priority, title, truncated description, due 
 
 File: `components/board/CreateTaskModal.tsx`
 
-Minimal task creation modal used from a board column. Requires explicit `projectId` and `columnId`.
+Board-column wrapper around the shared task creation modal. Requires explicit `projectId` and `columnId`.
 
 ### TaskDetailModal
 
@@ -145,19 +145,13 @@ It provides:
 - React Query Devtools in development
 - Sonner toasts
 
-### Legacy ThemeProvider
-
-File: `components/providers/ThemeProvider.tsx`
-
-This provider appears to be unused by the current root layout. It uses a separate localStorage key named `themeMode`. Treat it as legacy until the codebase confirms otherwise.
-
 ## Component Design Patterns
 
 Common patterns:
 
-- Feature modals own their form schema and mutation.
+- Task creation uses the shared `components/tasks/CreateTaskModal.tsx` implementation with context-specific wrappers.
 - Mutations show Sonner toasts.
-- Successful mutations invalidate React Query keys.
+- Successful task mutations use shared React Query invalidation helpers from `lib/queryKeys.ts`.
 - Form inputs use React Hook Form and Zod.
 - MUI `sx` props are used directly for layout and styling.
 
@@ -165,8 +159,4 @@ Common patterns:
 
 These are documentation observations, not completed changes:
 
-- Consolidate the three task creation modal variants if their behavior should remain aligned.
-- Normalize board query keys.
 - Extract shared task/project types to reduce duplicated interfaces.
-- Remove or replace the legacy provider once confirmed unused.
-- Remove development console logging before production release.

@@ -230,7 +230,7 @@ function VerifyEmailContent() {
                 mb: 1,
               }}
             >
-              We've sent a 6-digit verification code to
+              We&apos;ve sent a 6-digit verification code to
             </Typography>
             
             <Typography
@@ -336,7 +336,7 @@ function VerifyEmailContent() {
                       mb: 1,
                     }}
                   >
-                    Didn't receive the code?
+                    Didn&apos;t receive the code?
                   </Typography>
                   
                   <Button

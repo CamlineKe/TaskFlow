@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 import { Modal } from '@/components/ui/Modal';
 import apiClient from '@/lib/axios';
+import { queryKeys } from '@/lib/queryKeys';
 
 // Zod schema for the form
 const createProjectSchema = z.object({
@@ -74,8 +75,7 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
     mutationFn: createProject,
     onSuccess: () => {
       toast.success('Project created successfully!');
-      // Invalidate the 'projects' query to refetch the data
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects });
       reset();
       onClose();
     },

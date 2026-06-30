@@ -37,6 +37,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/lib/axios';
+import { queryKeys } from '@/lib/queryKeys';
 
 // Animation variants
 const fadeIn = {
@@ -58,11 +59,8 @@ const staggerChild = {
   visible: { opacity: 1, y: 0 },
 };
 
-// API fetch function - Optimized single endpoint with caching
 const fetchDashboardStats = async () => {
-  console.log('🔍 Fetching dashboard stats...');
   const { data } = await apiClient.get('/projects/dashboard/stats');
-  console.log('📥 Dashboard stats response:', data);
   return data;
 };
 
@@ -111,7 +109,7 @@ export default function DashboardPage() {
 
   // Fetch dashboard data with caching
   const { data: dashboardData, isLoading, isError } = useQuery<DashboardStats>({
-    queryKey: ['dashboard'],
+    queryKey: queryKeys.dashboard,
     queryFn: fetchDashboardStats,
     staleTime: 2 * 60 * 1000, // 2 minutes - data considered fresh
     gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
@@ -188,7 +186,7 @@ export default function DashboardPage() {
               color="text.secondary"
               sx={{ mb: 2 }}
             >
-              Here's what's happening with your projects today
+              Here&apos;s what&apos;s happening with your projects today
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
               <TodayIcon fontSize="small" />

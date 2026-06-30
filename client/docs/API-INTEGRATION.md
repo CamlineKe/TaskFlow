@@ -106,7 +106,7 @@ Errors usually show `error.response?.data?.message` with a fallback message.
 - `NEXT_PUBLIC_API_URL` is public browser configuration, not a secret.
 - Auth tokens are persisted in browser storage through Zustand persistence.
 - Registration state is temporarily held in `sessionStorage`.
-- Password reset token and verification code are passed in URL query parameters from verify to reset. URLs can be exposed through browser history, logs, screenshots, and referrer behavior, so this flow should be handled carefully before production hardening.
+- Password reset token and verification code are held in `sessionStorage` between code verification and password reset, then cleared after a successful reset.
 
 ## Reliability Notes
 

@@ -45,6 +45,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/axios';
+import { queryKeys } from '@/lib/queryKeys';
 
 // Form validation schemas
 const profileSchema = z.object({
@@ -124,7 +125,7 @@ export default function SettingsPage() {
 
   // Query to get user profile
   const { data: userProfile, isLoading: profileLoading } = useQuery({
-    queryKey: ['user-profile'],
+    queryKey: queryKeys.userProfile,
     queryFn: async () => {
       const response = await apiClient.get('/users/profile');
       return response.data;
@@ -133,7 +134,7 @@ export default function SettingsPage() {
 
   // Query to get user statistics
   const { data: userStats, isLoading: statsLoading } = useQuery({
-    queryKey: ['user-stats'],
+    queryKey: queryKeys.userStats,
     queryFn: async () => {
       const response = await apiClient.get('/users/stats');
       return response.data;
@@ -152,7 +153,7 @@ export default function SettingsPage() {
     },
     onSuccess: () => {
       toast.success('Notification preferences updated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.userProfile });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update notification preferences');
@@ -169,7 +170,7 @@ export default function SettingsPage() {
       toast.success('Profile updated successfully!');
       updateUser(data);
       setIsEditing(false);
-      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.userProfile });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update profile');

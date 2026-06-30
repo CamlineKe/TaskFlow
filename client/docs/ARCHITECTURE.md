@@ -102,7 +102,7 @@ The active app uses:
 - MUI `createTheme` objects for component styling.
 - `useThemeContext` as a convenience bridge for pages and layouts.
 
-`components/providers/ThemeProvider.tsx` appears to be an older provider implementation using a separate `themeMode` localStorage value. It is not referenced by the root layout and should not be treated as the active runtime provider.
+The previous legacy provider under `components/providers/ThemeProvider.tsx` has been removed. The active theme path is `lib/providers.tsx`, `lib/theme.ts`, and `context/ThemeContext.tsx`.
 
 ## Operational Notes
 
@@ -114,6 +114,5 @@ The active app uses:
 ## Known Constraints
 
 - Query key naming is inconsistent in some board/task/project paths.
-- Password reset token and code are passed through URL query parameters after verification.
-- Some pages include development `console.log` statements.
-- Several task creation modals overlap in responsibility.
+- Password reset token and code are temporarily held in `sessionStorage` after verification and cleared after a successful reset.
+- Project and task entity interfaces are still duplicated across several page/component files.
