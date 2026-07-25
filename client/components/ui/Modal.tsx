@@ -7,6 +7,8 @@ import {
   IconButton,
   Typography,
   Box,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 
@@ -18,34 +20,35 @@ interface ModalProps {
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export function Modal({ 
-  open, 
-  onClose, 
-  title, 
-  children, 
-  maxWidth = 'sm' 
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  maxWidth = 'sm'
 }: ModalProps) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const titleId = 'modal-title';
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
       maxWidth={maxWidth}
       fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-        },
-      }}
+      fullScreen={fullScreen}
+      aria-labelledby={titleId}
     >
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+          <Typography variant="h6" component="div" id={titleId} sx={{ fontWeight: 600 }}>
             {title}
           </Typography>
           <IconButton
             onClick={onClose}
             size="small"
+            aria-label="Close dialog"
             sx={{
               color: 'text.secondary',
               '&:hover': {

@@ -25,13 +25,25 @@ Responsible for hydrating user state when a token exists but the user object is 
 
 File: `components/ui/Modal.tsx`
 
-Shared wrapper around MUI dialog behavior. Used by project and task workflows.
+Shared wrapper around MUI dialog behavior. Used by project and task workflows. It provides an accessible close button, `aria-labelledby` wiring, theme-based elevation, and full-screen presentation on small screens.
 
 ### ConfirmationModal
 
 File: `components/ui/ConfirmationModal.tsx`
 
-Reusable confirmation dialog for destructive or important actions, such as deleting tasks and projects.
+Reusable confirmation dialog for destructive or important actions, such as deleting tasks and projects. It supports `info`, `success`, `warning`, and `error` severities with a matching title icon and confirm-button color, an optional `loading` state that disables actions, and safe focus behavior: destructive confirmations focus Cancel by default so pressing Enter cannot confirm the action.
+
+### OptionChips
+
+File: `components/ui/OptionChips.tsx`
+
+Accessible single-select chip group with radio semantics (`role="radiogroup"` / `role="radio"` / `aria-checked`) and roving-tabindex keyboard navigation (arrow keys, Home/End). Used for option pickers such as status and priority selection.
+
+### EmptyState
+
+File: `components/ui/EmptyState.tsx`
+
+Consistent empty-state layout: optional large muted icon, title, description, and an optional call-to-action button.
 
 ## Project Components
 
@@ -86,7 +98,7 @@ Shared task creation implementation. It can operate globally by asking for a pro
 
 File: `components/tasks/TaskCompletionConfirmModal.tsx`
 
-Confirms whether a task should be marked complete or reopened.
+Confirms whether a task should be marked complete or reopened. Composes the shared `ConfirmationModal` with task-specific copy and severity.
 
 ## Board Components
 
