@@ -14,6 +14,31 @@ const sharedThemeOptions: ThemeOptions = {
   shape: {
     borderRadius: 8, // A modern, slightly rounded corner
   },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none', // Sentence-case buttons everywhere
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          borderRadius: 12,
+          backgroundImage: 'none', // Flat surfaces in both modes
+          boxShadow: theme.shadows[8],
+        }),
+      },
+    },
+    MuiDialogTitle: {
+      styleOverrides: {
+        root: {
+          fontWeight: 600,
+        },
+      },
+    },
+  },
 };
 
 // Create the light theme by merging shared options with light-specific colors
