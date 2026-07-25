@@ -35,8 +35,11 @@ import {
 import { useAuthStore } from '@/store/auth.store';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
 import { useThemeContext } from '@/context/ThemeContext';
 import { SessionLoader } from '@/components/layout/SessionLoader';
+import apiClient from '@/lib/axios';
+import { queryKeys } from '@/lib/queryKeys';
 import NextLink from 'next/link';
 
 const DRAWER_WIDTH = 280;
@@ -96,16 +99,32 @@ function DrawerContent({ mode, toggleColorMode }: { mode: 'light' | 'dark'; togg
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
       <Box sx={{ p: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-            color: 'primary.main',
-            mb: 2,
-          }}
-        >
-          TaskFlow
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              color: 'primary.main',
+            }}
+          >
+            TaskFlow
+          </Typography>
+          <IconButton
+            onClick={toggleColorMode}
+            aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            size="small"
+            sx={{
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              '&:hover': {
+                bgcolor: 'action.hover',
+              },
+            }}
+          >
+            {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+          </IconButton>
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar
             sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}
@@ -120,23 +139,6 @@ function DrawerContent({ mode, toggleColorMode }: { mode: 'light' | 'dark'; togg
               {user?.email}
             </Typography>
           </Box>
-        </Box>
-        
-        {/* Theme Toggle */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-          <IconButton 
-            onClick={toggleColorMode} 
-            sx={{
-              bgcolor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
-              '&:hover': {
-                bgcolor: 'action.hover',
-              },
-            }}
-          >
-            {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-          </IconButton>
         </Box>
       </Box>
       
@@ -222,27 +224,52 @@ export default function AppLayout({
     setMobileOpen(!mobileOpen);
   };
 
-  // Generate breadcrumbs
+  // Resolve a project name for breadcrumbs on /app/projects/[projectId]
+  const pathSegments = pathname.split('/').filter(Boolean);
+  const projectIdSegment =
+    pathSegments[0] === 'app' && pathSegments[1] === 'projects' && pathSegments[2]
+      ? pathSegments[2]
+      : null;
+
+  const { data: breadcrumbProject } = useQuery<{ name: string }>({
+    queryKey: queryKeys.project(projectIdSegment ?? ''),
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/projects/${projectIdSegment}`);
+      return data;
+    },
+    enabled: !!projectIdSegment && isAuthenticated,
+    staleTime: 60 * 1000,
+  });
+
+  // Generate breadcrumbs from path segments
   const getBreadcrumbs = () => {
-    const pathSegments = pathname.split('/').filter(Boolean);
-    const breadcrumbs = [];
-    
-    // Always add home
-    breadcrumbs.push({
-      label: 'Home',
-      path: '/app',
-      current: pathname === '/app'
-    });
-    
-    // Add current page if not home
-    if (pathname !== '/app' && breadcrumbMap[pathname]) {
+    const breadcrumbs = [
+      {
+        label: 'Home',
+        path: '/app',
+        current: pathname === '/app',
+      },
+    ];
+
+    const sectionPath = `/${pathSegments.slice(0, 2).join('/')}`;
+    const sectionLabel = pathSegments.length > 1 ? breadcrumbMap[sectionPath] : undefined;
+
+    if (sectionLabel) {
       breadcrumbs.push({
-        label: breadcrumbMap[pathname],
-        path: pathname,
-        current: true
+        label: sectionLabel,
+        path: sectionPath,
+        current: !projectIdSegment,
       });
     }
-    
+
+    if (projectIdSegment) {
+      breadcrumbs.push({
+        label: breadcrumbProject?.name ?? 'Project',
+        path: pathname,
+        current: true,
+      });
+    }
+
     return breadcrumbs;
   };
 
@@ -278,6 +305,7 @@ export default function AppLayout({
                 <IconButton 
                   color="inherit" 
                   onClick={toggleColorMode}
+                  aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                   sx={{ mr: 1 }}
                 >
                   {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}

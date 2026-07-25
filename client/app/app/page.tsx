@@ -13,51 +13,34 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  IconButton,
   useTheme,
   useMediaQuery,
   LinearProgress,
   Avatar,
+  Skeleton,
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
-  TrendingUp as TrendingUpIcon,
-  Schedule as ScheduleIcon,
   CheckCircle as CheckCircleIcon,
   PendingActions as PendingActionsIcon,
   Add as AddIcon,
   ArrowForward as ArrowForwardIcon,
   Today as TodayIcon,
   AccessTime as AccessTimeIcon,
+  EventBusy as EventBusyIcon,
+  Settings as SettingsIcon,
+  Folder as FolderIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/lib/axios';
 import { queryKeys } from '@/lib/queryKeys';
-
-// Animation variants
-const fadeIn = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-};
-
-const staggerContainer = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const staggerChild = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
+import { getTaskStatusColor, getTaskStatusLabel, formatDate } from '@/lib/display';
+import { staggerContainer, staggerChild } from '@/lib/motion';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 const fetchDashboardStats = async () => {
   const { data } = await apiClient.get('/projects/dashboard/stats');
@@ -104,7 +87,6 @@ export default function DashboardPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuthStore();
-  const router = useRouter();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Fetch dashboard data with caching
@@ -135,26 +117,6 @@ export default function DashboardPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
-  // FIXED: Proper status color mapping
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'success';
-      case 'in-progress': return 'warning';
-      case 'todo': return 'info';
-      default: return 'default';
-    }
-  };
-
-  // NEW: Helper function to format status labels
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'todo': return 'To Do';
-      case 'in-progress': return 'In Progress';
-      case 'completed': return 'Completed';
-      default: return status;
-    }
-  };
 
   const getGreeting = () => {
     const hour = currentTime.getHours();
@@ -216,7 +178,7 @@ export default function DashboardPage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Typography variant="h4" component="div" sx={{ fontWeight: 700 }}>
-                        {isLoading ? '...' : stats.totalTasks}
+                        {isLoading ? <Skeleton width={48} sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} /> : stats.totalTasks}
                       </Typography>
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
                         Total Tasks
@@ -239,7 +201,7 @@ export default function DashboardPage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Typography variant="h4" component="div" sx={{ fontWeight: 700 }}>
-                        {isLoading ? '...' : stats.completedTasks}
+                        {isLoading ? <Skeleton width={48} sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} /> : stats.completedTasks}
                       </Typography>
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
                         Completed
@@ -262,7 +224,7 @@ export default function DashboardPage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Typography variant="h4" component="div" sx={{ fontWeight: 700 }}>
-                        {isLoading ? '...' : stats.inProgressTasks}
+                        {isLoading ? <Skeleton width={48} sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} /> : stats.inProgressTasks}
                       </Typography>
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
                         In Progress
@@ -276,8 +238,8 @@ export default function DashboardPage() {
             
             <Grid item xs={6} md={3}>
               <Card sx={{
-                bgcolor: 'info.main',
-                color: 'info.contrastText',
+                bgcolor: 'error.main',
+                color: 'error.contrastText',
                 transition: 'transform 0.2s ease',
                 '&:hover': { transform: 'translateY(-4px)' }
               }}>
@@ -285,13 +247,13 @@ export default function DashboardPage() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Typography variant="h4" component="div" sx={{ fontWeight: 700 }}>
-                        {isLoading ? '...' : stats.pendingTasks}
+                        {isLoading ? <Skeleton width={48} sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} /> : stats.overdueTasks}
                       </Typography>
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                        Pending
+                        Overdue
                       </Typography>
                     </Box>
-                    <ScheduleIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+                    <EventBusyIcon sx={{ fontSize: 40, opacity: 0.8 }} />
                   </Box>
                 </CardContent>
               </Card>
@@ -325,16 +287,20 @@ export default function DashboardPage() {
                       Array.from(new Array(3)).map((_, index) => (
                         <ListItem key={index} sx={{ px: 0 }}>
                           <ListItemIcon>
-                            <Avatar sx={{ width: 32, height: 32, bgcolor: 'grey.300' }}>...</Avatar>
+                            <Skeleton variant="circular" width={32} height={32} />
                           </ListItemIcon>
-                          <ListItemText primary="Loading..." secondary="Loading..." />
+                          <ListItemText
+                            primary={<Skeleton variant="text" width="60%" />}
+                            secondary={<Skeleton variant="text" width="40%" />}
+                          />
                         </ListItem>
                       ))
                     ) : stats.recentTasks.length === 0 ? (
-                      <ListItem sx={{ px: 0 }}>
-                        <ListItemText 
-                          primary="No recent tasks" 
-                          secondary="Create your first task to see it here"
+                      <ListItem sx={{ display: 'block', px: 0 }}>
+                        <EmptyState
+                          icon={<AssignmentIcon />}
+                          title="No recent tasks"
+                          description="Create your first task to see it here"
                         />
                       </ListItem>
                     ) : (
@@ -364,16 +330,16 @@ export default function DashboardPage() {
                                   {task.project?.name || 'No Project'}
                                 </Typography>
                                 <Chip 
-                                  label={getStatusLabel(task.status)} 
+                                  label={getTaskStatusLabel(task.status)} 
                                   size="small" 
-                                  color={getStatusColor(task.status) as any}
+                                  color={getTaskStatusColor(task.status)}
                                   sx={{ height: 20, fontSize: '0.7rem' }}
                                 />
                                 {task.dueDate && (
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     <AccessTimeIcon sx={{ fontSize: 12, color: 'text.secondary' }} />
                                     <Typography variant="caption" color="text.secondary">
-                                      {new Date(task.dueDate).toLocaleDateString()}
+                                      {formatDate(task.dueDate)}
                                     </Typography>
                                   </Box>
                                 )}
@@ -424,14 +390,16 @@ export default function DashboardPage() {
                     {isLoading ? (
                       Array.from(new Array(3)).map((_, index) => (
                         <Box key={index}>
-                          <Typography variant="subtitle2">Loading...</Typography>
-                          <LinearProgress sx={{ height: 8, borderRadius: 4, mt: 1 }} />
+                          <Skeleton variant="text" width="70%" />
+                          <Skeleton variant="rounded" height={8} sx={{ borderRadius: 4, mt: 1 }} />
                         </Box>
                       ))
                     ) : stats.recentProjects.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                        No projects found. Create your first project!
-                      </Typography>
+                      <EmptyState
+                        icon={<FolderIcon />}
+                        title="No projects yet"
+                        description="Create your first project to track progress here"
+                      />
                     ) : (
                       stats.recentProjects.map((project: any) => (
                         <Box key={project._id}>
@@ -514,10 +482,10 @@ export default function DashboardPage() {
                   href="/app/tasks"
                   variant="outlined"
                   fullWidth
-                  startIcon={<ScheduleIcon />}
+                  startIcon={<AssignmentIcon />}
                   sx={{ py: 1.5 }}
                 >
-                  View Schedule
+                  View Tasks
                 </Button>
               </Grid>
               <Grid item xs={6} sm={3}>
@@ -526,10 +494,10 @@ export default function DashboardPage() {
                   href="/app/settings"
                   variant="outlined"
                   fullWidth
-                  startIcon={<TrendingUpIcon />}
+                  startIcon={<SettingsIcon />}
                   sx={{ py: 1.5 }}
                 >
-                  Analytics
+                  Settings
                 </Button>
               </Grid>
             </Grid>
