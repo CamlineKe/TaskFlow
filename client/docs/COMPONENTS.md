@@ -5,7 +5,8 @@
 Components are grouped by feature:
 
 - `components/layout`: authenticated session loading.
-- `components/ui`: shared modal primitives.
+- `components/ui`: shared modal primitives, option picker, and empty state.
+- `components/auth`: shared authentication page scaffold pieces.
 - `components/projects`: project cards and project-scoped modals.
 - `components/tasks`: task list workflow modals.
 - `components/board`: board, columns, draggable cards, and task detail modal.
@@ -85,6 +86,34 @@ Loading placeholder for project card lists.
 File: `components/projects/CreateTaskModalForProject.tsx`
 
 Project-specific wrapper around the shared task creation modal.
+
+## Auth Components
+
+Shared pieces used by every page under `app/(auth)/` on top of the dark scaffold provided by `app/(auth)/layout.tsx`.
+
+### AuthCard
+
+File: `components/auth/AuthCard.tsx`
+
+Glassmorphism card with entrance animation, centered header (optional icon badge, title, subtitle), and an optional footer link. All auth pages render inside this card.
+
+### AuthTextField
+
+File: `components/auth/AuthTextField.tsx`
+
+TextField pre-styled for the dark auth scaffold. Supports `startIcon`, `passwordToggle` (masked input with an accessible visibility toggle), and `codeInput` (centered wide-tracked 6-digit code input).
+
+### AuthButton
+
+File: `components/auth/AuthButton.tsx`
+
+Primary auth action button with a consistent spinner-based loading state. Supports contained (default) and outlined variants, and can render as a link via `component={Link}`.
+
+### AuthBackButton
+
+File: `components/auth/AuthBackButton.tsx`
+
+Accessible glass back button positioned at the top-left of the auth scaffold.
 
 ## Task Components
 

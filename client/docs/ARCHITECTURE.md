@@ -19,7 +19,7 @@ The main architectural split is:
 - `app/layout.tsx`: root layout, metadata, font loading, and `Providers` wrapper.
 - `lib/providers.tsx`: active provider tree for `next-themes`, MUI, React Query, React Query Devtools, `CssBaseline`, and Sonner toasts.
 - `app/page.tsx`: public landing page.
-- `app/(auth)/layout.tsx`: simple grouping layout for authentication pages.
+- `app/(auth)/layout.tsx`: shared scaffold for authentication pages (dark full-screen background and centered container). Pages compose the shared auth components in `components/auth/`.
 - `app/app/layout.tsx`: authenticated application frame and access gate.
 
 ## Provider Stack
@@ -87,7 +87,8 @@ The application uses MUI components directly with local `sx` styling. There is n
 
 Primary UI groups:
 
-- `components/ui`: generic modal and confirmation modal.
+- `components/ui`: generic modal, confirmation modal, option picker, and empty state.
+- `components/auth`: shared authentication card, field, button, and back button.
 - `components/layout`: session loading behavior.
 - `components/projects`: project cards and project/task modals.
 - `components/tasks`: task creation and completion confirmation.
