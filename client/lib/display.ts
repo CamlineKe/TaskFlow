@@ -52,7 +52,10 @@ export function getProjectStatusColor(status: string): ChipColor {
 
 export function getProjectStatusLabel(status: string): string {
   if (!status) return status;
-  return status.charAt(0).toUpperCase() + status.slice(1);
+  return status
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 // ---------------------------------------------------------------------------

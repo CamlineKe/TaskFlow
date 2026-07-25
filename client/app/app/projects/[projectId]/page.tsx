@@ -24,6 +24,7 @@ import {
   Tabs,
   useTheme,
   useMediaQuery,
+  Skeleton,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -45,6 +46,12 @@ import { toast } from 'sonner';
 
 import apiClient from '@/lib/axios';
 import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
+import {
+  getPriorityColor,
+  getPriorityLabel,
+  getProjectStatusColor,
+  getProjectStatusLabel,
+} from '@/lib/display';
 import type { ProjectDetail, Task } from '@/types/domain';
 
 const CreateTaskModalForProject = dynamic(
@@ -74,32 +81,6 @@ const Board = dynamic(
 const fetchProjectDetail = async (projectId: string): Promise<ProjectDetail> => {
   const { data } = await apiClient.get(`/projects/${projectId}`);
   return data;
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active':
-      return 'success';
-    case 'completed':
-      return 'info';
-    case 'on-hold':
-      return 'warning';
-    default:
-      return 'default';
-  }
-};
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'high':
-      return 'error';
-    case 'medium':
-      return 'warning';
-    case 'low':
-      return 'info';
-    default:
-      return 'default';
-  }
 };
 
 interface ProjectDetailPageProps {
@@ -193,8 +174,24 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress size={48} />
+      <Box>
+        {/* Header skeleton */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1 }} />
+          <Skeleton variant="text" width="40%" height={40} sx={{ flex: 1 }} />
+          <Skeleton variant="rounded" width={130} height={36} sx={{ ml: 2 }} />
+        </Box>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={8}>
+            <Skeleton variant="rounded" height={220} sx={{ mb: 3 }} />
+            <Skeleton variant="rounded" height={48} sx={{ mb: 2 }} />
+            <Skeleton variant="rounded" height={320} />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Skeleton variant="rounded" height={260} sx={{ mb: 3 }} />
+            <Skeleton variant="rounded" height={180} />
+          </Grid>
+        </Grid>
       </Box>
     );
   }
@@ -271,10 +268,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                 
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 3 }}>
                   <Chip
-                    label={project.status}
-                    color={getStatusColor(project.status) as any}
+                    label={getProjectStatusLabel(project.status)}
+                    color={getProjectStatusColor(project.status)}
                     variant="filled"
-                    sx={{ textTransform: 'capitalize' }}
                   />
                   {project.dueDate && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -302,10 +298,8 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                     sx={{
                       height: 8,
                       borderRadius: 4,
-                      bgcolor: 'grey.200',
                       '& .MuiLinearProgress-bar': {
                         borderRadius: 4,
-                        bgcolor: 'primary.main',
                       },
                     }}
                   />
@@ -387,9 +381,9 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                                   {task.title}
                                 </Typography>
                                 <Chip
-                                  label={task.priority}
+                                  label={getPriorityLabel(task.priority)}
                                   size="small"
-                                  color={getPriorityColor(task.priority) as any}
+                                  color={getPriorityColor(task.priority)}
                                   variant="outlined"
                                 />
                               </Box>

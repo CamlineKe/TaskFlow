@@ -5,14 +5,12 @@ import {
   Box,
   Typography,
   Button,
-  CircularProgress,
   Alert,
   Grid,
   TextField,
   InputAdornment,
   Tabs,
   Tab,
-  Chip,
   useTheme,
   useMediaQuery,
   Fab,
@@ -26,7 +24,7 @@ import {
   FilterList as FilterListIcon,
   ViewModule as ViewModuleIcon,
   ViewList as ViewListIcon,
-  MoreVert as MoreVertIcon,
+  Folder as FolderIcon,
 } from '@mui/icons-material';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
@@ -35,7 +33,9 @@ import { motion } from 'framer-motion';
 import apiClient from '@/lib/axios';
 import { ProjectCard, Project } from '@/components/projects/ProjectCard';
 import { ProjectCardSkeleton } from '@/components/projects/ProjectCardSkeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { queryKeys } from '@/lib/queryKeys';
+import { fadeIn, staggerContainer, staggerChild } from '@/lib/motion';
 
 const CreateProjectModal = dynamic(
   () => import('@/components/projects/CreateProjectModal').then((mod) => mod.CreateProjectModal)
@@ -46,32 +46,7 @@ const fetchProjects = async (): Promise<Project[]> => {
   return data;
 };
 
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      duration: 0.5,
-    },
-  },
-};
-
-const fadeIn = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-};
+type SortKey = 'name' | 'dueDate' | 'progress';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -103,6 +78,7 @@ export default function ProjectsPage() {
   const [tabValue, setTabValue] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [sortBy, setSortBy] = useState<SortKey | null>(null);
 
   const { data: projects, isLoading, isError, error } = useQuery<Project[]>({
     queryKey: queryKeys.projects,
@@ -124,22 +100,53 @@ export default function ProjectsPage() {
     setMenuAnchor(null);
   };
 
+  const handleSortSelect = (key: SortKey) => {
+    setSortBy((current) => (current === key ? null : key));
+    setMenuAnchor(null);
+  };
+
+  const getProgress = (project: Project) => {
+    if (!project.totalTasks || project.totalTasks === 0) return 0;
+    return Math.round(((project.completedTasks || 0) / project.totalTasks) * 100);
+  };
+
   const filterProjects = (status?: string) => {
     let filtered = projectList;
-    
+
     if (status === 'active') {
       filtered = filtered.filter(project => project.status === 'active');
     } else if (status === 'completed') {
       filtered = filtered.filter(project => project.status === 'completed');
     }
-    
+
     if (searchQuery) {
-      filtered = filtered.filter(project => 
+      filtered = filtered.filter(project =>
         project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (project.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
       );
     }
-    
+
+    if (sortBy) {
+      const sorted = [...filtered];
+      switch (sortBy) {
+        case 'name':
+          sorted.sort((a, b) => a.name.localeCompare(b.name));
+          break;
+        case 'dueDate':
+          sorted.sort((a, b) => {
+            if (!a.dueDate && !b.dueDate) return 0;
+            if (!a.dueDate) return 1;
+            if (!b.dueDate) return -1;
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          });
+          break;
+        case 'progress':
+          sorted.sort((a, b) => getProgress(b) - getProgress(a));
+          break;
+      }
+      return sorted;
+    }
+
     return filtered;
   };
 
@@ -153,6 +160,47 @@ export default function ProjectsPage() {
   };
 
   const stats = getProjectStats();
+
+  const renderProjects = (projects: Project[], emptyTitle: string, emptyDescription: string, showCreateAction = false) => {
+    if (isLoading) {
+      return (
+        <Grid container spacing={3}>
+          {Array.from(new Array(6)).map((_, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <ProjectCardSkeleton />
+            </Grid>
+          ))}
+        </Grid>
+      );
+    }
+
+    if (projects.length === 0) {
+      return (
+        <EmptyState
+          icon={<FolderIcon />}
+          title={emptyTitle}
+          description={emptyDescription}
+          actionLabel={showCreateAction ? 'Create New Project' : undefined}
+          onAction={showCreateAction ? () => setIsModalOpen(true) : undefined}
+          actionIcon={<AddIcon />}
+        />
+      );
+    }
+
+    return (
+      <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+        <Grid container spacing={3}>
+          {projects.map((project) => (
+            <Grid item xs={12} sm={6} md={viewMode === 'list' ? 12 : 4} key={project._id}>
+              <motion.div variants={staggerChild}>
+                <ProjectCard project={project} viewMode={viewMode} />
+              </motion.div>
+            </Grid>
+          ))}
+        </Grid>
+      </motion.div>
+    );
+  };
 
   return (
     <>
@@ -261,16 +309,18 @@ export default function ProjectsPage() {
                 <IconButton
                   onClick={() => setViewMode('grid')}
                   color={viewMode === 'grid' ? 'primary' : 'default'}
+                  aria-label="Grid view"
                 >
                   <ViewModuleIcon />
                 </IconButton>
                 <IconButton
                   onClick={() => setViewMode('list')}
                   color={viewMode === 'list' ? 'primary' : 'default'}
+                  aria-label="List view"
                 >
                   <ViewListIcon />
                 </IconButton>
-                <IconButton onClick={handleMenuOpen}>
+                <IconButton onClick={handleMenuOpen} aria-label="Sort projects">
                   <FilterListIcon />
                 </IconButton>
               </Box>
@@ -296,78 +346,29 @@ export default function ProjectsPage() {
 
         {/* Project Lists */}
         <TabPanel value={tabValue} index={0}>
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
-            <Grid container spacing={3}>
-              {isLoading
-                ? Array.from(new Array(6)).map((_, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={index}>
-                      <ProjectCardSkeleton />
-                    </Grid>
-                  ))
-                : filterProjects().map((project) => (
-                    <Grid item xs={12} sm={6} md={viewMode === 'list' ? 12 : 4} key={project._id}>
-                      <motion.div variants={itemVariants}>
-                        <ProjectCard project={project} viewMode={viewMode} />
-                      </motion.div>
-                    </Grid>
-                  ))}
-            </Grid>
-          </motion.div>
+          {renderProjects(
+            filterProjects(),
+            searchQuery ? 'No projects found' : 'No projects yet',
+            searchQuery ? 'Try adjusting your search query' : 'Create your first project to get started',
+            !searchQuery
+          )}
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
-            <Grid container spacing={3}>
-              {filterProjects('active').map((project) => (
-                <Grid item xs={12} sm={6} md={viewMode === 'list' ? 12 : 4} key={project._id}>
-                  <motion.div variants={itemVariants}>
-                    <ProjectCard project={project} viewMode={viewMode} />
-                  </motion.div>
-                </Grid>
-              ))}
-            </Grid>
-          </motion.div>
+          {renderProjects(
+            filterProjects('active'),
+            searchQuery ? 'No active projects found' : 'No active projects',
+            searchQuery ? 'Try adjusting your search query' : 'Projects marked as active will appear here'
+          )}
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
-            <Grid container spacing={3}>
-              {filterProjects('completed').map((project) => (
-                <Grid item xs={12} sm={6} md={viewMode === 'list' ? 12 : 4} key={project._id}>
-                  <motion.div variants={itemVariants}>
-                    <ProjectCard project={project} viewMode={viewMode} />
-                  </motion.div>
-                </Grid>
-              ))}
-            </Grid>
-          </motion.div>
+          {renderProjects(
+            filterProjects('completed'),
+            searchQuery ? 'No completed projects found' : 'No completed projects',
+            searchQuery ? 'Try adjusting your search query' : 'Completed projects will appear here'
+          )}
         </TabPanel>
-
-        {/* Empty State */}
-        {filterProjects().length === 0 && !isLoading && (
-          <Box
-            sx={{
-              textAlign: 'center',
-              py: 8,
-              px: 2,
-            }}
-          >
-            <Typography variant="h6" gutterBottom color="text.secondary">
-              {searchQuery ? 'No projects found' : 'No projects yet'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              {searchQuery ? 'Try adjusting your search query' : 'Create your first project to get started'}
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setIsModalOpen(true)}
-              size="large"
-            >
-              Create New Project
-            </Button>
-          </Box>
-        )}
 
         {/* Mobile FAB */}
         {isMobile && (
@@ -412,9 +413,15 @@ export default function ProjectsPage() {
             },
           }}
         >
-          <MenuItem onClick={handleMenuClose} sx={{ px: 2, py: 1 }}>Sort by Name</MenuItem>
-          <MenuItem onClick={handleMenuClose} sx={{ px: 2, py: 1 }}>Sort by Date</MenuItem>
-          <MenuItem onClick={handleMenuClose} sx={{ px: 2, py: 1 }}>Sort by Progress</MenuItem>
+          <MenuItem onClick={() => handleSortSelect('name')} selected={sortBy === 'name'} sx={{ px: 2, py: 1 }}>
+            Sort by Name
+          </MenuItem>
+          <MenuItem onClick={() => handleSortSelect('dueDate')} selected={sortBy === 'dueDate'} sx={{ px: 2, py: 1 }}>
+            Sort by Due Date
+          </MenuItem>
+          <MenuItem onClick={() => handleSortSelect('progress')} selected={sortBy === 'progress'} sx={{ px: 2, py: 1 }}>
+            Sort by Progress
+          </MenuItem>
         </Menu>
       </motion.div>
     </>

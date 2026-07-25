@@ -10,14 +10,15 @@ import {
   Box,
   FormControl,
   FormLabel,
-  Chip,
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { Modal } from '@/components/ui/Modal';
+import { OptionChips } from '@/components/ui/OptionChips';
 import apiClient from '@/lib/axios';
 import { queryKeys } from '@/lib/queryKeys';
+import type { ChipColor } from '@/lib/display';
 
 // Zod schema for the form
 const createProjectSchema = z.object({
@@ -45,12 +46,11 @@ const createProject = async (data: CreateProjectFormValues) => {
   return response.data;
 };
 
-const statusOptions = [
-  { value: 'active', label: 'Active', color: 'success' as const },
-  { value: 'on-hold', label: 'On Hold', color: 'warning' as const },
-  { value: 'completed', label: 'Completed', color: 'info' as const },
+const statusOptions: { value: CreateProjectFormValues['status']; label: string; color: ChipColor }[] = [
+  { value: 'active', label: 'Active', color: 'success' },
+  { value: 'on-hold', label: 'On Hold', color: 'warning' },
+  { value: 'completed', label: 'Completed', color: 'info' },
 ];
-
 export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
   const queryClient = useQueryClient();
 
@@ -106,13 +106,6 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
             {...register('name')}
             error={!!errors.name}
             helperText={errors.name?.message}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
           />
           
           <TextField
@@ -128,23 +121,12 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
           
           <FormControl>
             <FormLabel sx={{ mb: 1, fontWeight: 500 }}>Project Status</FormLabel>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {statusOptions.map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  color={watchedStatus === option.value ? option.color : 'default'}
-                  variant={watchedStatus === option.value ? 'filled' : 'outlined'}
-                  onClick={() => setValue('status', option.value as any)}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: watchedStatus === option.value ? undefined : 'action.hover',
-                    },
-                  }}
-                />
-              ))}
-            </Box>
+            <OptionChips
+              aria-label="Project status"
+              options={statusOptions}
+              value={watchedStatus}
+              onChange={(value) => setValue('status', value)}
+            />
           </FormControl>
           
           <TextField
@@ -172,10 +154,7 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
               variant="contained"
               color="primary"
               disabled={isSubmitting || mutation.isPending}
-              sx={{
-                flex: 1,
-                py: 1.5,
-              }}
+              sx={{ flex: 1 }}
             >
               {mutation.isPending ? 'Creating...' : 'Create Project'}
             </Button>

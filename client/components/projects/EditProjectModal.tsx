@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,18 +11,16 @@ import {
   Box,
   FormControl,
   FormLabel,
-  Chip,
-  MenuItem,
-  Select,
-  InputLabel,
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { Modal } from '@/components/ui/Modal';
+import { OptionChips } from '@/components/ui/OptionChips';
 import apiClient from '@/lib/axios';
 import { Project } from './ProjectCard';
 import { queryKeys } from '@/lib/queryKeys';
+import type { ChipColor } from '@/lib/display';
 
 // Zod schema for project editing
 const editProjectSchema = z.object({
@@ -50,11 +49,18 @@ const updateProject = async (projectId: string, data: EditProjectFormValues) => 
   return response.data;
 };
 
-const statusOptions = [
-  { value: 'active', label: 'Active', color: 'primary' as const },
-  { value: 'completed', label: 'Completed', color: 'success' as const },
-  { value: 'on-hold', label: 'On Hold', color: 'warning' as const },
+const statusOptions: { value: EditProjectFormValues['status']; label: string; color: ChipColor }[] = [
+  { value: 'active', label: 'Active', color: 'success' },
+  { value: 'completed', label: 'Completed', color: 'info' },
+  { value: 'on-hold', label: 'On Hold', color: 'warning' },
 ];
+
+const toFormValues = (project: Project): EditProjectFormValues => ({
+  name: project.name,
+  description: project.description || '',
+  status: project.status,
+  dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : '',
+});
 
 export function EditProjectModal({ open, onClose, project }: EditProjectModalProps) {
   const queryClient = useQueryClient();
@@ -68,15 +74,16 @@ export function EditProjectModal({ open, onClose, project }: EditProjectModalPro
     formState: { errors, isSubmitting },
   } = useForm<EditProjectFormValues>({
     resolver: zodResolver(editProjectSchema),
-    defaultValues: {
-      name: project.name,
-      description: project.description || '',
-      status: project.status,
-      dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : '',
-    },
+    defaultValues: toFormValues(project),
   });
 
   const watchedStatus = watch('status');
+
+  // Re-sync the form when a different project is passed while mounted
+  // (the modal is dynamically imported and long-lived in ProjectCard).
+  useEffect(() => {
+    reset(toFormValues(project));
+  }, [project, reset]);
 
   const mutation = useMutation({
     mutationFn: (data: EditProjectFormValues) => updateProject(project._id, data),
@@ -97,12 +104,7 @@ export function EditProjectModal({ open, onClose, project }: EditProjectModalPro
   };
 
   const handleClose = () => {
-    reset({
-      name: project.name,
-      description: project.description || '',
-      status: project.status,
-      dueDate: project.dueDate ? new Date(project.dueDate).toISOString().split('T')[0] : '',
-    });
+    reset(toFormValues(project));
     onClose();
   };
 
@@ -132,19 +134,14 @@ export function EditProjectModal({ open, onClose, project }: EditProjectModalPro
             helperText={errors.description?.message || 'Optional project description'}
           />
           
-          <FormControl fullWidth>
-            <InputLabel>Status</InputLabel>
-            <Select
-              label="Status"
+          <FormControl>
+            <FormLabel sx={{ mb: 1, fontWeight: 500 }}>Status</FormLabel>
+            <OptionChips
+              aria-label="Project status"
+              options={statusOptions}
               value={watchedStatus}
-              {...register('status')}
-            >
-              {statusOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
+              onChange={(value) => setValue('status', value)}
+            />
           </FormControl>
           
           <TextField
@@ -172,10 +169,7 @@ export function EditProjectModal({ open, onClose, project }: EditProjectModalPro
               variant="contained"
               color="primary"
               disabled={isSubmitting || mutation.isPending}
-              sx={{
-                flex: 1,
-                py: 1.5,
-              }}
+              sx={{ flex: 1 }}
             >
               {mutation.isPending ? 'Updating...' : 'Update Project'}
             </Button>
