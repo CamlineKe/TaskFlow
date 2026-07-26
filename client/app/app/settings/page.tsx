@@ -10,8 +10,10 @@ import {
   TextField,
   Switch,
   Avatar,
+  Skeleton,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   ListItemIcon,
   ListItemSecondaryAction,
@@ -21,10 +23,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  CircularProgress,
 } from '@mui/material';
 import {
-  Person as PersonIcon,
   Security as SecurityIcon,
   Notifications as NotificationsIcon,
   Logout as LogoutIcon,
@@ -46,6 +46,8 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/axios';
 import { queryKeys } from '@/lib/queryKeys';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { staggerContainer, staggerChild, useAccessibleVariants } from '@/lib/motion';
 
 // Form validation schemas
 const profileSchema = z.object({
@@ -67,25 +69,6 @@ const passwordSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
-const fadeIn = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-};
-
-const staggerContainer = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const staggerChild = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
 export default function SettingsPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -93,9 +76,12 @@ export default function SettingsPage() {
   const { mode, toggleColorMode } = useThemeContext();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const accessibleStaggerContainer = useAccessibleVariants(staggerContainer);
+  const accessibleStaggerChild = useAccessibleVariants(staggerChild);
   
   const [isEditing, setIsEditing] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [notifications, setNotifications] = useState({
     emailNotifications: true,
     pushNotifications: true,
@@ -250,11 +236,11 @@ export default function SettingsPage() {
     <motion.div
       initial="hidden"
       animate="visible"
-      variants={staggerContainer}
+      variants={accessibleStaggerContainer}
     >
       <Box sx={{ maxWidth: '1000px', mx: 'auto' }}>
         {/* Header */}
-        <motion.div variants={staggerChild}>
+        <motion.div variants={accessibleStaggerChild}>
           <Box sx={{ mb: 4 }}>
             <Typography
               variant={isMobile ? 'h4' : 'h3'}
@@ -276,12 +262,25 @@ export default function SettingsPage() {
         <Grid container spacing={3}>
           {/* Profile Settings */}
           <Grid item xs={12} md={8}>
-            <motion.div variants={staggerChild}>
+            <motion.div variants={accessibleStaggerChild}>
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   {profileLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                      <CircularProgress />
+                    <Box sx={{ py: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
+                        <Skeleton variant="circular" width={80} height={80} />
+                        <Box>
+                          <Skeleton variant="text" width={160} height={28} />
+                          <Skeleton variant="text" width={200} height={20} />
+                        </Box>
+                      </Box>
+                      <Grid container spacing={2}>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <Grid item xs={12} sm={i > 4 ? 12 : 6} key={i}>
+                            <Skeleton variant="rounded" height={56} />
+                          </Grid>
+                        ))}
+                      </Grid>
                     </Box>
                   ) : (
                     <>
@@ -405,7 +404,7 @@ export default function SettingsPage() {
             </motion.div>
 
             {/* Notification Settings */}
-            <motion.div variants={staggerChild}>
+            <motion.div variants={accessibleStaggerChild}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
@@ -413,8 +412,17 @@ export default function SettingsPage() {
                   </Typography>
                   
                   {profileLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                      <CircularProgress size={24} />
+                    <Box sx={{ py: 1 }}>
+                      {[1, 2, 3].map((i) => (
+                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1 }}>
+                          <Skeleton variant="circular" width={24} height={24} />
+                          <Box sx={{ flexGrow: 1 }}>
+                            <Skeleton variant="text" width="60%" height={20} />
+                            <Skeleton variant="text" width="40%" height={16} />
+                          </Box>
+                          <Skeleton variant="rounded" width={48} height={24} />
+                        </Box>
+                      ))}
                     </Box>
                   ) : (
                     <List>
@@ -477,7 +485,7 @@ export default function SettingsPage() {
 
           {/* Quick Settings Sidebar */}
           <Grid item xs={12} md={4}>
-            <motion.div variants={staggerChild}>
+            <motion.div variants={accessibleStaggerChild}>
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
@@ -506,7 +514,7 @@ export default function SettingsPage() {
             </motion.div>
 
             {/* Account Actions */}
-            <motion.div variants={staggerChild}>
+            <motion.div variants={accessibleStaggerChild}>
               <Card sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
@@ -514,25 +522,29 @@ export default function SettingsPage() {
                   </Typography>
                   
                   <List>
-                    <ListItem button onClick={() => setPasswordDialogOpen(true)}>
-                      <ListItemIcon>
-                        <SecurityIcon />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Change Password"
-                        secondary="Update your password"
-                      />
+                    <ListItem disablePadding>
+                      <ListItemButton onClick={() => setPasswordDialogOpen(true)}>
+                        <ListItemIcon>
+                          <SecurityIcon />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary="Change Password"
+                          secondary="Update your password"
+                        />
+                      </ListItemButton>
                     </ListItem>
                     
-                    <ListItem button onClick={handleLogout}>
-                      <ListItemIcon>
-                        <LogoutIcon sx={{ color: 'error.main' }} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Logout"
-                        secondary="Sign out of your account"
-                        primaryTypographyProps={{ color: 'error.main' }}
-                      />
+                    <ListItem disablePadding>
+                      <ListItemButton onClick={() => setLogoutConfirmOpen(true)}>
+                        <ListItemIcon>
+                          <LogoutIcon sx={{ color: 'error.main' }} />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary="Logout"
+                          secondary="Sign out of your account"
+                          primaryTypographyProps={{ color: 'error.main' }}
+                        />
+                      </ListItemButton>
                     </ListItem>
                   </List>
                 </CardContent>
@@ -540,7 +552,7 @@ export default function SettingsPage() {
             </motion.div>
 
             {/* Usage Stats */}
-            <motion.div variants={staggerChild}>
+            <motion.div variants={accessibleStaggerChild}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
@@ -548,8 +560,21 @@ export default function SettingsPage() {
                   </Typography>
                   
                   {statsLoading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                      <CircularProgress size={24} />
+                    <Box sx={{ py: 1 }}>
+                      <Box sx={{ textAlign: 'center', mb: 3 }}>
+                        <Skeleton variant="text" width={80} height={40} sx={{ mx: 'auto' }} />
+                        <Skeleton variant="text" width={120} height={16} sx={{ mx: 'auto', mt: 0.5 }} />
+                      </Box>
+                      <Grid container spacing={2}>
+                        {[1, 2, 3, 4].map((i) => (
+                          <Grid item xs={6} key={i}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Skeleton variant="text" width={40} height={32} sx={{ mx: 'auto' }} />
+                              <Skeleton variant="text" width={60} height={14} sx={{ mx: 'auto', mt: 0.5 }} />
+                            </Box>
+                          </Grid>
+                        ))}
+                      </Grid>
                     </Box>
                   ) : (
                     <Box>
@@ -621,6 +646,18 @@ export default function SettingsPage() {
           </Grid>
         </Grid>
       </Box>
+
+      {/* Logout Confirmation */}
+      <ConfirmationModal
+        open={logoutConfirmOpen}
+        onClose={() => setLogoutConfirmOpen(false)}
+        onConfirm={handleLogout}
+        title="Logout?"
+        description="Are you sure you want to sign out of your account?"
+        confirmText="Logout"
+        cancelText="Cancel"
+        severity="warning"
+      />
 
       {/* Password Change Dialog */}
       <Dialog
