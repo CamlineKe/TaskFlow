@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import {
   TextField,
   InputAdornment,
@@ -23,7 +23,7 @@ export type AuthTextFieldProps = TextFieldProps & {
  * TextField pre-styled for the dark auth scaffold. Removes the
  * per-page copy-pasted glass input styling.
  */
-export function AuthTextField({
+export const AuthTextField = forwardRef<HTMLInputElement, AuthTextFieldProps>(function AuthTextField({
   startIcon,
   passwordToggle = false,
   codeInput = false,
@@ -32,7 +32,7 @@ export function AuthTextField({
   inputProps,
   sx,
   ...rest
-}: AuthTextFieldProps) {
+}, ref) {
   const theme = useTheme();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -40,6 +40,7 @@ export function AuthTextField({
 
   return (
     <TextField
+      inputRef={ref}
       fullWidth
       type={resolvedType}
       error={error}
@@ -102,7 +103,7 @@ export function AuthTextField({
       {...rest}
     />
   );
-}
+});
 
 function IconColor({ children }: { children: React.ReactNode }) {
   return (
