@@ -7,6 +7,7 @@ import {
   Person as PersonIcon,
   Flag as FlagIcon,
 } from '@mui/icons-material';
+import { getPriorityColor, getPriorityLabel, isOverdue } from '@/lib/display';
 import type { Task } from '@/types/domain';
 
 export type { Task };
@@ -16,25 +17,7 @@ interface TaskCardProps {
   onClick: () => void;
 }
 
-const getPriorityColor = (priority?: string) => {
-  switch (priority) {
-    case 'high': return 'error';
-    case 'medium': return 'warning';
-    case 'low': return 'info';
-    default: return 'default';
-  }
-};
-
-const getPriorityLabel = (priority?: string) => {
-  switch (priority) {
-    case 'high': return 'High';
-    case 'medium': return 'Medium';
-    case 'low': return 'Low';
-    default: return 'None';
-  }
-};
-
-const formatDate = (dateString?: string) => {
+const formatDueDate = (dateString?: string) => {
   if (!dateString) return '';
   const date = new Date(dateString);
   const today = new Date();
@@ -50,11 +33,6 @@ const formatDate = (dateString?: string) => {
   }
 };
 
-const isOverdue = (dateString?: string) => {
-  if (!dateString) return false;
-  return new Date(dateString) < new Date();
-};
-
 export function TaskCard({ task, onClick }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task._id,
@@ -68,7 +46,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
   const taskPriority = task.priority || 'medium';
   const taskDueDate = task.dueDate;
-  const isTaskOverdue = isOverdue(taskDueDate) && task.status !== 'completed';
+  const taskOverdue = isOverdue(taskDueDate) && task.status !== 'completed';
 
   return (
     <Paper
@@ -84,7 +62,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         backgroundColor: 'background.paper',
         cursor: 'grab',
         transition: 'all 0.2s ease',
-        border: isTaskOverdue ? '1px solid' : 'none',
+        border: taskOverdue ? '1px solid' : 'none',
         borderColor: 'error.main',
         '&:hover': {
           backgroundColor: 'action.hover',
@@ -102,21 +80,21 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         <Chip
           label={getPriorityLabel(taskPriority)}
           size="small"
-          color={getPriorityColor(taskPriority) as any}
+          color={getPriorityColor(taskPriority)}
           sx={{ height: 20, fontSize: '0.65rem' }}
           icon={<FlagIcon sx={{ fontSize: '0.75rem !important' }} />}
         />
         {taskDueDate && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <AccessTimeIcon sx={{ fontSize: 14, color: isTaskOverdue ? 'error.main' : 'text.secondary' }} />
+            <AccessTimeIcon sx={{ fontSize: 14, color: taskOverdue ? 'error.main' : 'text.secondary' }} />
             <Typography 
               variant="caption" 
               sx={{ 
-                color: isTaskOverdue ? 'error.main' : 'text.secondary',
-                fontWeight: isTaskOverdue ? 600 : 400,
+                color: taskOverdue ? 'error.main' : 'text.secondary',
+                fontWeight: taskOverdue ? 600 : 400,
               }}
             >
-              {formatDate(taskDueDate)}
+              {formatDueDate(taskDueDate)}
             </Typography>
           </Box>
         )}

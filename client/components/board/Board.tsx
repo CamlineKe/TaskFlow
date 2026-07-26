@@ -12,7 +12,7 @@ import {
   useSensors,
   closestCorners,
 } from '@dnd-kit/core';
-import { Box, CircularProgress, Alert, Typography } from '@mui/material';
+import { Box, CircularProgress, Alert, Typography, Skeleton } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -149,8 +149,25 @@ export function Board({ projectId }: BoardProps) {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 2 }}>
+        {[1, 2, 3].map((i) => (
+          <Box
+            key={i}
+            sx={{
+              width: 300,
+              flexShrink: 0,
+              p: 2,
+              borderRadius: 1,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Skeleton variant="text" width="40%" height={32} sx={{ mb: 2 }} />
+            {[1, 2].map((j) => (
+              <Skeleton key={j} variant="rounded" height={100} sx={{ mb: 1.5 }} />
+            ))}
+          </Box>
+        ))}
       </Box>
     );
   }

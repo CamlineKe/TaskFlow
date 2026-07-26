@@ -51,17 +51,25 @@ export function SessionLoader({ children }: { children: React.ReactNode }) {
   }, [token, user, setUser, logout]);
 
   if (isLoading) {
-    // While we are verifying the session, show a full-screen loading spinner.
     return (
       <Box
         sx={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           height: '100vh',
+          gap: 3,
+          bgcolor: 'background.default',
         }}
       >
-        <CircularProgress />
+        <Typography
+          variant="h4"
+          sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: '-0.5px' }}
+        >
+          TaskFlow
+        </Typography>
+        <CircularProgress size={28} />
       </Box>
     );
   }
