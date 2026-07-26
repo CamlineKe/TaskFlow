@@ -20,7 +20,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { toast } from 'sonner';
 
 import { Modal } from '@/components/ui/Modal';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal'; // Import ConfirmationModal
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { OptionChips } from '@/components/ui/OptionChips';
 import apiClient from '@/lib/axios';
 import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
 import type { Task } from '@/types/domain';
@@ -28,6 +29,7 @@ import type { Task } from '@/types/domain';
 const editTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
+  priority: z.enum(['low', 'medium', 'high']),
 });
 
 type EditTaskFormValues = z.infer<typeof editTaskSchema>;
@@ -79,13 +81,15 @@ export function TaskDetailModal({ taskId, onClose, projectId }: TaskDetailModalP
     }
   }, [isError, error, onClose]);
 
-  const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<EditTaskFormValues>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { isSubmitting, errors } } = useForm<EditTaskFormValues>({
     resolver: zodResolver(editTaskSchema),
   });
 
+  const watchedPriority = watch('priority');
+
   useEffect(() => {
     if (task) {
-      reset({ title: task.title, description: task.description || '' });
+      reset({ title: task.title, description: task.description || '', priority: task.priority });
     }
   }, [task, reset]);
 
@@ -164,6 +168,21 @@ export function TaskDetailModal({ taskId, onClose, projectId }: TaskDetailModalP
                 {...register('description')}
                 defaultValue={task.description || ''}
               />
+              <Box>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 500 }}>
+                  Priority
+                </Typography>
+                <OptionChips
+                  options={[
+                    { value: 'low', label: 'Low', color: 'info' },
+                    { value: 'medium', label: 'Medium', color: 'warning' },
+                    { value: 'high', label: 'High', color: 'error' },
+                  ]}
+                  value={watchedPriority}
+                  onChange={(value) => setValue('priority', value as 'low' | 'medium' | 'high')}
+                  aria-label="Task priority"
+                />
+              </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
                 <IconButton 
                   onClick={() => setIsConfirmOpen(true)} 

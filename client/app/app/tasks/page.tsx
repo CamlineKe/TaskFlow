@@ -3,16 +3,13 @@
 import {
   Box,
   Typography,
-  Grid,
   Card,
   CardContent,
   Button,
   Chip,
-  List,
-  ListItem,
-  ListItemText,
   ListItemIcon,
   IconButton,
+  Skeleton,
   useTheme,
   useMediaQuery,
   TextField,
@@ -29,7 +26,6 @@ import {
   FormGroup,
   FormControlLabel,
   Divider,
-  CircularProgress,
   Alert,
 } from '@mui/material';
 import {
@@ -39,13 +35,11 @@ import {
   MoreVert as MoreVertIcon,
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
-  Flag as FlagIcon,
   AccessTime as AccessTimeIcon,
   Assignment as AssignmentIcon,
   Edit as EditIcon,
   Check as CheckIcon,
-  PriorityHigh as PriorityHighIcon,
-  FolderShared as FolderSharedIcon,
+  ArrowBack as ArrowBackIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
@@ -55,6 +49,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/axios';
 import { toast } from 'sonner';
 import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { staggerContainer, staggerChild, useAccessibleVariants } from '@/lib/motion';
+import { getTaskStatusColor, getPriorityColor, formatDate } from '@/lib/display';
 import type { Task } from '@/types/domain';
 
 const CreateTaskModal = dynamic(
@@ -72,26 +70,6 @@ const TaskCompletionConfirmModal = dynamic(
 const fetchTasks = async (): Promise<Task[]> => {
   const { data } = await apiClient.get('/tasks');
   return data.tasks || [];
-};
-
-// Animation variants
-const fadeIn = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-};
-
-const staggerContainer = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const staggerChild = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
 };
 
 interface TabPanelProps {
@@ -146,6 +124,8 @@ export default function TasksPage() {
   });
 
   const queryClient = useQueryClient();
+  const accessibleStaggerContainer = useAccessibleVariants(staggerContainer);
+  const accessibleStaggerChild = useAccessibleVariants(staggerChild);
 
   // Fetch tasks from API
   const { data: tasks, isLoading, isError } = useQuery<Task[]>({
@@ -155,6 +135,10 @@ export default function TasksPage() {
 
   // Use empty array as fallback
   const taskList = tasks || [];
+
+  // Context menu state
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+  const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null);
 
   // Mutation to update task status
   const updateTaskStatusMutation = useMutation({
@@ -168,6 +152,34 @@ export default function TasksPage() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update task status');
+    },
+  });
+
+  const updatePriorityMutation = useMutation({
+    mutationFn: async ({ taskId, priority }: { taskId: string; priority: string }) => {
+      const response = await apiClient.put(`/tasks/${taskId}`, { priority });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Priority updated');
+      invalidateTaskViews(queryClient);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update priority');
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const response = await apiClient.delete(`/tasks/${taskId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Task deleted');
+      invalidateTaskViews(queryClient);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete task');
     },
   });
 
@@ -189,6 +201,7 @@ export default function TasksPage() {
   const handleMenuClose = () => {
     setMenuPosition(null);
     setSelectedTaskId(null);
+    setShowPriorityPicker(false);
   };
 
   const handleTaskClick = (taskId: string) => {
@@ -267,24 +280,6 @@ export default function TasksPage() {
     setTaskToComplete(null);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'success';
-      case 'in-progress': return 'warning';
-      case 'todo': return 'info';
-      default: return 'default';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'error';
-      case 'medium': return 'warning';
-      case 'low': return 'info';
-      default: return 'default';
-    }
-  };
-
   const filterTasks = (status?: string): Task[] => {
     let filtered = taskList;
 
@@ -333,8 +328,22 @@ export default function TasksPage() {
   const renderTaskList = (tasksToRender: Task[], emptyMessage: string) => {
     if (isLoading) {
       return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {[1, 2, 3].map((i) => (
+            <Card key={i} sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <Skeleton variant="rounded" width={24} height={24} />
+                <Box sx={{ flexGrow: 1 }}>
+                  <Skeleton variant="text" width="40%" height={28} sx={{ mb: 1 }} />
+                  <Skeleton variant="text" width="30%" height={20} />
+                  <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                    <Skeleton variant="rounded" width={80} height={24} />
+                    <Skeleton variant="rounded" width={80} height={24} />
+                  </Box>
+                </Box>
+              </Box>
+            </Card>
+          ))}
         </Box>
       );
     }
@@ -349,25 +358,19 @@ export default function TasksPage() {
 
     if (tasksToRender.length === 0) {
       return (
-        <motion.div variants={staggerChild}>
-          <Box sx={{ textAlign: 'center', py: 8, px: 2 }}>
-            <AssignmentIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" gutterBottom color="text.secondary">
-              {emptyMessage}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              {searchQuery ? 'Try adjusting your search query' : 'Create your first task to get started'}
-            </Typography>
-            <Button variant="contained" startIcon={<AddIcon />} size="large" onClick={handleCreateTask}>
-              Create New Task
-            </Button>
-          </Box>
-        </motion.div>
+        <EmptyState
+          icon={<AssignmentIcon />}
+          title={emptyMessage}
+          description={searchQuery ? 'Try adjusting your search query' : 'Create your first task to get started'}
+          actionLabel={searchQuery ? undefined : 'Create New Task'}
+          onAction={searchQuery ? undefined : handleCreateTask}
+          actionIcon={searchQuery ? undefined : <AddIcon />}
+        />
       );
     }
 
     return (
-      <motion.div variants={staggerContainer}>
+      <motion.div variants={accessibleStaggerContainer}>
         {tasksToRender.map((task) => (
           <TaskCard key={task._id} task={task} />
         ))}
@@ -379,7 +382,7 @@ export default function TasksPage() {
     const isCompleted = task.status === 'completed';
 
     return (
-      <motion.div variants={staggerChild}>
+      <motion.div variants={accessibleStaggerChild}>
         <Card
           onClick={() => handleTaskClick(task._id)}
           sx={{
@@ -419,7 +422,7 @@ export default function TasksPage() {
                   <Chip
                     label={task.priority}
                     size="small"
-                    color={getPriorityColor(task.priority) as any}
+                    color={getPriorityColor(task.priority)}
                     sx={{ height: 20, fontSize: '0.7rem' }}
                   />
                 </Box>
@@ -444,14 +447,14 @@ export default function TasksPage() {
                   <Chip
                     label={task.status}
                     size="small"
-                    color={getStatusColor(task.status) as any}
+                    color={getTaskStatusColor(task.status)}
                     sx={{ height: 24 }}
                   />
                   {task.dueDate && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                       <Typography variant="caption" color="text.secondary">
-                        Due {new Date(task.dueDate).toLocaleDateString()}
+                        Due {formatDate(task.dueDate)}
                       </Typography>
                     </Box>
                   )}
@@ -507,11 +510,11 @@ export default function TasksPage() {
       <motion.div
         initial="hidden"
         animate="visible"
-        variants={staggerContainer}
+        variants={accessibleStaggerContainer}
       >
         <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
           {/* Header */}
-          <motion.div variants={staggerChild}>
+          <motion.div variants={accessibleStaggerChild}>
             <Box sx={{ mb: 4 }}>
               <Typography
                 variant={isMobile ? 'h4' : 'h3'}
@@ -557,7 +560,7 @@ export default function TasksPage() {
           </motion.div>
 
           {/* Tabs */}
-          <motion.div variants={staggerChild}>
+          <motion.div variants={accessibleStaggerChild}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
               <Tabs value={tabValue} onChange={handleTabChange} aria-label="task tabs">
                 <Tab
@@ -606,6 +609,23 @@ export default function TasksPage() {
             <AddIcon />
           </Fab>
 
+          {/* Delete Confirmation */}
+          <ConfirmationModal
+            open={!!deleteConfirmTaskId}
+            onClose={() => setDeleteConfirmTaskId(null)}
+            onConfirm={() => {
+              if (deleteConfirmTaskId) {
+                deleteTaskMutation.mutate(deleteConfirmTaskId);
+              }
+              setDeleteConfirmTaskId(null);
+            }}
+            title="Delete Task?"
+            description="Are you sure you want to delete this task? This action cannot be undone."
+            confirmText="Delete"
+            severity="error"
+            loading={deleteTaskMutation.isPending}
+          />
+
           {/* Context Menu */}
           <Menu
             id="task-context-menu"
@@ -622,60 +642,100 @@ export default function TasksPage() {
               },
             }}
           >
-            <MenuItem onClick={(e) => {
-              e.stopPropagation();
-              if (selectedTaskId) {
-                setTaskDetailId(selectedTaskId);
-              }
-              handleMenuClose();
-            }} sx={{ px: 2, py: 1 }}>
-              <ListItemIcon>
-                <EditIcon fontSize="small" />
-              </ListItemIcon>
-              Edit Task
-            </MenuItem>
-            <MenuItem onClick={(e) => {
-              e.stopPropagation();
-              if (selectedTaskId) {
-                const task = taskList.find(t => t._id === selectedTaskId);
-                if (task) {
-                  handleTaskCompletionClick(task, { stopPropagation: () => { } } as any);
-                }
-              }
-              handleMenuClose();
-            }} sx={{ px: 2, py: 1 }}>
-              <ListItemIcon>
-                <CheckIcon fontSize="small" />
-              </ListItemIcon>
-              Mark as Complete
-            </MenuItem>
-            <MenuItem onClick={(e) => {
-              e.stopPropagation();
-              handleMenuClose();
-            }} sx={{ px: 2, py: 1 }}>
-              <ListItemIcon>
-                <PriorityHighIcon fontSize="small" />
-              </ListItemIcon>
-              Change Priority
-            </MenuItem>
-            <MenuItem onClick={(e) => {
-              e.stopPropagation();
-              handleMenuClose();
-            }} sx={{ px: 2, py: 1 }}>
-              <ListItemIcon>
-                <FolderSharedIcon fontSize="small" />
-              </ListItemIcon>
-              Assign to Project
-            </MenuItem>
-            <MenuItem onClick={(e) => {
-              e.stopPropagation();
-              handleMenuClose();
-            }} sx={{ px: 2, py: 1, color: 'error.main' }}>
-              <ListItemIcon>
-                <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
-              </ListItemIcon>
-              Delete Task
-            </MenuItem>
+            {showPriorityPicker ? (
+              <>
+                <MenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPriorityPicker(false);
+                }} sx={{ px: 2, py: 1 }}>
+                  <ListItemIcon>
+                    <ArrowBackIcon fontSize="small" />
+                  </ListItemIcon>
+                  Back
+                </MenuItem>
+                <Divider />
+                {(['high', 'medium', 'low'] as const).map((priority) => (
+                  <MenuItem key={priority} onClick={(e) => {
+                    e.stopPropagation();
+                    if (selectedTaskId) {
+                      updatePriorityMutation.mutate({ taskId: selectedTaskId, priority });
+                    }
+                    handleMenuClose();
+                  }} sx={{ px: 2, py: 1 }} disabled={updatePriorityMutation.isPending}>
+                    <ListItemIcon>
+                      <Box
+                        sx={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          bgcolor: priority === 'high' ? 'error.main' : priority === 'medium' ? 'warning.main' : 'info.main',
+                        }}
+                      />
+                    </ListItemIcon>
+                    {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                  </MenuItem>
+                ))}
+              </>
+            ) : (
+              <>
+                <MenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  if (selectedTaskId) {
+                    setTaskDetailId(selectedTaskId);
+                  }
+                  handleMenuClose();
+                }} sx={{ px: 2, py: 1 }}>
+                  <ListItemIcon>
+                    <EditIcon fontSize="small" />
+                  </ListItemIcon>
+                  Edit Task
+                </MenuItem>
+                <MenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  if (selectedTaskId) {
+                    const task = taskList.find(t => t._id === selectedTaskId);
+                    if (task) {
+                      handleTaskCompletionClick(task, { stopPropagation: () => { } } as any);
+                    }
+                  }
+                  handleMenuClose();
+                }} sx={{ px: 2, py: 1 }}>
+                  <ListItemIcon>
+                    <CheckIcon fontSize="small" />
+                  </ListItemIcon>
+                  Mark as Complete
+                </MenuItem>
+                <MenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPriorityPicker(true);
+                }} sx={{ px: 2, py: 1 }}>
+                  <ListItemIcon>
+                    <Box
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        bgcolor: 'text.secondary',
+                      }}
+                    />
+                  </ListItemIcon>
+                  Change Priority
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  if (selectedTaskId) {
+                    setDeleteConfirmTaskId(selectedTaskId);
+                  }
+                  handleMenuClose();
+                }} sx={{ px: 2, py: 1, color: 'error.main' }}>
+                  <ListItemIcon>
+                    <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
+                  </ListItemIcon>
+                  Delete Task
+                </MenuItem>
+              </>
+            )}
           </Menu>
 
           {/* Filter Popover */}

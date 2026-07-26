@@ -10,7 +10,6 @@ import {
   Box,
   FormControl,
   FormLabel,
-  Chip,
   MenuItem,
   Select,
   InputLabel,
@@ -19,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { Modal } from '@/components/ui/Modal';
+import { OptionChips } from '@/components/ui/OptionChips';
 import apiClient from '@/lib/axios';
 import { invalidateTaskViews, queryKeys } from '@/lib/queryKeys';
 
@@ -198,11 +198,17 @@ export function CreateTaskModal({
                 defaultValue=""
                 {...register('projectId')}
               >
-                {projects.map((project) => (
-                  <MenuItem key={project._id} value={project._id}>
-                    {project.name}
+                {projects.length === 0 ? (
+                  <MenuItem disabled value="">
+                    No projects available
                   </MenuItem>
-                ))}
+                ) : (
+                  projects.map((project) => (
+                    <MenuItem key={project._id} value={project._id}>
+                      {project.name}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
               {errors.projectId && (
                 <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.5 }}>
@@ -214,23 +220,12 @@ export function CreateTaskModal({
 
           <FormControl>
             <FormLabel sx={{ mb: 1, fontWeight: 500 }}>Priority</FormLabel>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {priorityOptions.map((option) => (
-                <Chip
-                  key={option.value}
-                  label={option.label}
-                  color={watchedPriority === option.value ? option.color : 'default'}
-                  variant={watchedPriority === option.value ? 'filled' : 'outlined'}
-                  onClick={() => setValue('priority', option.value)}
-                  sx={{
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: watchedPriority === option.value ? undefined : 'action.hover',
-                    },
-                  }}
-                />
-              ))}
-            </Box>
+            <OptionChips
+              options={priorityOptions.map(p => ({ value: p.value, label: p.label, color: p.color }))}
+              value={watchedPriority}
+              onChange={(value) => setValue('priority', value)}
+              aria-label="Task priority"
+            />
           </FormControl>
 
           <Box sx={{ display: 'flex', gap: 2, pt: 2 }}>
