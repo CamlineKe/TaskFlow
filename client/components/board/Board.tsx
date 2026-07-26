@@ -12,7 +12,7 @@ import {
   useSensors,
   closestCorners,
 } from '@dnd-kit/core';
-import { Box, CircularProgress, Alert, Typography, Skeleton } from '@mui/material';
+import { Box, Alert, Typography, Skeleton } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 

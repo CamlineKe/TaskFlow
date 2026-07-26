@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, Typography, CircularProgress } from '@mui/material';
 import { useAuthStore } from '@/store/auth.store';
 import apiClient from '@/lib/axios';
 
@@ -14,10 +14,7 @@ export function SessionLoader({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const verifyUser = async () => {
-      // Get the token from the Zustand store (which gets it from localStorage).
-      const storedToken = useAuthStore.getState().token;
-
-      if (!storedToken) {
+      if (!token) {
         // If there's no token, no need to do anything.
         setIsLoading(false);
         return;
@@ -27,7 +24,7 @@ export function SessionLoader({ children }: { children: React.ReactNode }) {
         // Use our apiClient, which will automatically have the Bearer token header.
         const { data: userData } = await apiClient.get('/auth/me');
         // If the request is successful, the token is valid. Set the user in the store.
-        setUser(userData, storedToken);
+        setUser(userData, token);
       } catch (error) {
         // If the request fails (e.g., token expired), log the user out.
         if (process.env.NODE_ENV === 'development') {

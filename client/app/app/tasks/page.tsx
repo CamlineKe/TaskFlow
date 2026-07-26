@@ -638,7 +638,8 @@ export default function TasksPage() {
                 minWidth: 180,
                 maxWidth: 250,
                 boxShadow: '0px 2px 10px rgba(0,0,0,0.2)',
-                border: '1px solid #e0e0e0',
+                border: '1px solid',
+                borderColor: 'divider',
               },
             }}
           >
