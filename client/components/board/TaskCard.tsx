@@ -46,7 +46,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
   const taskPriority = task.priority || 'medium';
   const taskDueDate = task.dueDate;
-  const taskOverdue = isOverdue(taskDueDate) && task.status !== 'completed';
+  const taskOverdue = !!taskDueDate && isOverdue(taskDueDate) && task.status !== 'completed';
 
   return (
     <Paper
